@@ -28,11 +28,21 @@ class MongoDbDao(AbstractDao):
         try:
             key, table_name = self.create_key(entity.get_id())
             collection = self.db[table_name]
+            
+            # Convert entity to dictionary
+            entity_dict = dict(entity)
+            
+            # Ensure dates are properly formatted as strings
+            if entity.get_creation_date():
+                entity_dict["_creation_date"] = entity.get_creation_date()
+            if entity.get_modification_date():
+                entity_dict["_modification_date"] = entity.get_modification_date()
+            
             if collection.find_one(key) is None:
-                collection.insert_one(dict(entity))
+                collection.insert_one(entity_dict)
             else:
                 collection.delete_one(key)
-                collection.insert_one(dict(entity))
+                collection.insert_one(entity_dict)
         except Exception as exception:
             raise DbError(table_name, "save", str(exception))
 

@@ -10,16 +10,14 @@ from dateutil import parser as date_parser
 from dateutil import relativedelta
 from datetime import date
 from datetime import datetime
+from stocks.api_config import API_BASE, API_KEY
 
 logging.basicConfig(format='%(asctime)s [%(levelname)s] "[%(filename)s:%(lineno)s - %(funcName)s() ] %(message)s"', level=logging.INFO)
 
-#API_KEY = "5fd52ea92b3786.45774921"
-API_KEY = "97e4449ce1e26a08b7025a5c01492796"
-
-#FUNDAMENTALS_URI = "https://eodhistoricaldata.com/api/fundamentals/{}?api_token=" + API_KEY
-FUNDAMENTALS_URI = "https://financialmodelingprep.com/api/v3/fundamentals/{}?api_token=" + API_KEY
-EOD_URI = "https://eodhistoricaldata.com/api/eod/{}?api_token=" + API_KEY +"&period=d&fmt=json&from=2005-09-30&to=2020-09-30"
-SPLITS_URI = "https://eodhistoricaldata.com/api/splits/{}?api_token=" + API_KEY + "&fmt=json"
+# API Configuration
+FUNDAMENTALS_API = f"{API_BASE}/fundamentals/{{}}?apikey={API_KEY}"
+EOD_API = f"https://eodhistoricaldata.com/api/eod/{{}}?api_token={API_KEY}&period=d&fmt=json&from=2005-09-30&to=2020-09-30"
+SPLITS_API = f"https://eodhistoricaldata.com/api/splits/{{}}?api_token={API_KEY}&fmt=json"
 
 MIN_RATE = 1.03
 
@@ -129,18 +127,18 @@ class Stock:
 
     def fetch_fundamentals_from_api(self):
         logging.info("Fetching {} from API".format(self.name))
-        self.fundamental_data = json.loads(requests.get(FUNDAMENTALS_URI.format(self.name)).text)
+        self.fundamental_data = json.loads(requests.get(FUNDAMENTALS_API.format(self.name)).text)
         self.dirty = True
         #print(self.data)
 
     def fetch_historical_prices_from_api(self):
-        eod_prices = json.loads(requests.get(EOD_URI.format(self.name)).text)
+        eod_prices = json.loads(requests.get(EOD_API.format(self.name)).text)
         self.historical_prices = {"_id": self.name, "eod_prices": eod_prices}
         self.dirty = True
         #print(eod_prices)
 
     def fetch_splits_from_api(self):
-        splits = json.loads(requests.get(SPLITS_URI.format(self.name)).text)
+        splits = json.loads(requests.get(SPLITS_API.format(self.name)).text)
         self.splits = {"_id": self.name, "splits": splits}
         self.dirty = True
         #print(splits)

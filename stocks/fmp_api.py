@@ -11,55 +11,61 @@ from datetime import date
 from dateutil.relativedelta import relativedelta
 
 from stocks.api_error import ApiError
+from stocks.api_config import API_KEY, API_BASE
 from stocks.data_names import Data
 from stocks.data_names import Market
 
 logging.basicConfig(format='%(asctime)s [%(levelname)s] "[%(filename)s:%(lineno)s - %(funcName)s() ] %(message)s"', level=logging.INFO)
 
-API_KEY = "97e4449ce1e26a08b7025a5c01492796"
+"""
+This file defines the API end-points used to fetch data about a stock.
+The various APIs are mapped to classes that represent the fields in the stock class in the stock_data_uri_map
+"""
 
-API = "https://financialmodelingprep.com/api/v3/"
 # Stock information APIs
-DCF_URI = API + "historical-daily-discounted-cash-flow/{}&apikey=" + API_KEY
-CASH_FLOW_QUARTERLY_URI = API + "cash-flow-statement/{}?period=quarter&limit={}&apikey=" + API_KEY
-CASH_FLOW_YEARLY_URI = API + "cash-flow-statement/{}?period=year&limit={}&apikey=" + API_KEY
-EARNINGS_QUARTERLY_URI = API + "income-statement/{}?period=quarter&limit={}&apikey=" + API_KEY
-EARNINGS_YEARLY_URI = API + "income-statement/{}?period=year&limit={}&apikey=" + API_KEY
-ENTERPRISE_VALUE_URI = API + "enterprise-values/{}?period=quarter&limit={}&apikey=" + API_KEY
-BALANCE_SHEET_QUARTERLY_URI = API + "balance-sheet-statement/{}?period=quarter&limit={}&apikey=" + API_KEY
-BALANCE_SHEET_YEARLY_URI = API + "balance-sheet-statement/{}?period=year&limit={}&apikey=" + API_KEY
-HISTORICAL_PRICES_URI = API + "historical-price-full/{}?from={}&to={}&serietype=line&apikey=" + API_KEY
-KEY_METRICS_URI = API + "key-metrics/{}?period=quarter&limit={}&apikey=" + API_KEY
-STOCK_SPLITS_URI = API + "historical-price-full/stock_split/{}?apikey=" + API_KEY
-QUOTE_URI = API + "quote/{}?apikey=" + API_KEY
+DCF_API = f"{API_BASE}historical-daily-discounted-cash-flow/{{}}&apikey={API_KEY}"
+CASH_FLOW_QUARTERLY_API = f"{API_BASE}cash-flow-statement/{{}}?period=quarter&limit={{}}&apikey={API_KEY}"
+CASH_FLOW_YEARLY_API = f"{API_BASE}cash-flow-statement/{{}}?period=year&limit={{}}&apikey={API_KEY}"
+EARNINGS_QUARTERLY_API = f"{API_BASE}income-statement/{{}}?period=quarter&limit={{}}&apikey={API_KEY}"
+EARNINGS_YEARLY_API = f"{API_BASE}income-statement/{{}}?period=year&limit={{}}&apikey={API_KEY}"
+ENTERPRISE_VALUE_API = f"{API_BASE}enterprise-values/{{}}?period=quarter&limit={{}}&apikey={API_KEY}"
+BALANCE_SHEET_QUARTERLY_API = f"{API_BASE}balance-sheet-statement/{{}}?period=quarter&limit={{}}&apikey={API_KEY}"
+BALANCE_SHEET_YEARLY_API = f"{API_BASE}balance-sheet-statement/{{}}?period=year&limit={{}}&apikey={API_KEY}"
+HISTORICAL_PRICES_API = f"{API_BASE}historical-price-full/{{}}?from={{}}&to={{}}&serietype=line&apikey={API_KEY}"
+KEY_METRICS_API = f"{API_BASE}key-metrics/{{}}?period=quarter&limit={{}}&apikey={API_KEY}"
+STOCK_SPLITS_API = f"{API_BASE}historical-price-full/stock_split/{{}}?apikey={API_KEY}"
+QUOTE_API = f"{API_BASE}quote/{{}}?apikey={API_KEY}"
 
 # Market information APIs
-STOCK_LIST_URI = API + "stock/list?apikey=" + API_KEY
-DOW_STOCKS_URI = API + "dowjones_constituent?apikey=" + API_KEY
-SP500_STOCKS_URI = API + "sp500_constituent?apikey=" + API_KEY
-NASDAQ_STOCKS_URI = API + "nasdaq_constituent?apikey=" + API_KEY
+STOCK_LIST_API = f"{API_BASE}stock/list?apikey={API_KEY}"
+DOW_STOCKS_API = f"{API_BASE}dowjones_constituent?apikey={API_KEY}"
+SP500_STOCKS_API = f"{API_BASE}sp500_constituent?apikey={API_KEY}"
+NASDAQ_STOCKS_API = f"{API_BASE}nasdaq_constituent?apikey={API_KEY}"
 
+# The maximum number of quarters or years to fetch
 QUARTER_LIMIT = 100
 YEAR_LIMIT = 25
 
+# The mapping of the data names to the API end-points
 stock_data_uri_map = {
-    Data.BalanceSheetQuarterly: BALANCE_SHEET_QUARTERLY_URI,
-    Data.BalanceSheetYearly: BALANCE_SHEET_YEARLY_URI,
-    Data.CashFlowQuarterly: CASH_FLOW_QUARTERLY_URI,
-    Data.CashFlowYearly: CASH_FLOW_YEARLY_URI,
-    Data.EarningsQuarterly: EARNINGS_QUARTERLY_URI,
-    Data.EarningsYearly: EARNINGS_YEARLY_URI,
-    Data.EnterpriseValue: ENTERPRISE_VALUE_URI,
-    Data.HistoricalPrices: HISTORICAL_PRICES_URI,
-    Data.KeyMetricsQuarterly: KEY_METRICS_URI,
-    Data.Quote: QUOTE_URI,
+    Data.BalanceSheetQuarterly: BALANCE_SHEET_QUARTERLY_API,
+    Data.BalanceSheetYearly: BALANCE_SHEET_YEARLY_API,
+    Data.CashFlowQuarterly: CASH_FLOW_QUARTERLY_API,
+    Data.CashFlowYearly: CASH_FLOW_YEARLY_API,
+    Data.EarningsQuarterly: EARNINGS_QUARTERLY_API,
+    Data.EarningsYearly: EARNINGS_YEARLY_API,
+    Data.EnterpriseValue: ENTERPRISE_VALUE_API,
+    Data.HistoricalPrices: HISTORICAL_PRICES_API,
+    Data.KeyMetricsQuarterly: KEY_METRICS_API,
+    Data.Quote: QUOTE_API,
     #    Data.StockSplits: STOCK_SPLITS_API,
 }
 
+# The mapping of the market data names to the API end-points
 market_data_uri_map = {
-    Market.DowJonesStocks: DOW_STOCKS_URI,
-    Market.SP500Stocks: SP500_STOCKS_URI,
-    Market.NasdaqStocks: NASDAQ_STOCKS_URI,
+    Market.DowJonesStocks: DOW_STOCKS_API,
+    Market.SP500Stocks: SP500_STOCKS_API,
+    Market.NasdaqStocks: NASDAQ_STOCKS_API,
 }
 
 def fetch_from_api(uri):
@@ -110,12 +116,12 @@ class FmpApi:
         return stocks
 
     def get_dcf(self, stock_symbol):
-        return fetch_from_api(DCF_URI.format(stock_symbol))
+        return fetch_from_api(DCF_API.format(stock_symbol))
 
 
 if __name__ == "__main__":
-    test_symbol = "AAPL"
+    test_symbol = "IBM"
     api = FmpApi()
-    json = api.get_stock_data(test_symbol, Data.Quote)
+    json = api.get_stock_data(test_symbol, Data.HistoricalPrices)
     logging.info(json)
 

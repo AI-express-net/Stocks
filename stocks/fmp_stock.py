@@ -25,6 +25,10 @@ from stocks.data_names import get_name_list
 from stocks.factory import Factory
 from stocks.financial_data import AnalysisModel
 
+"""
+This file defines the Stock class, which is used to fetch and store the data about a stock.
+"""
+
 logging.basicConfig(format='%(asctime)s [%(levelname)s] "[%(filename)s:%(lineno)s - %(funcName)s() ] %(message)s"', level=logging.INFO)
 
 MIN_RATE = 1.03
@@ -49,7 +53,7 @@ class StockStatus(enum.Enum):
     Populated = 3,
     # Errors
     FetchError = 10,
-    PopulatingError = 10,
+    PopulatingError = 11,
 
 
 class Stock:
@@ -77,17 +81,42 @@ class Stock:
     def fetch_stock_data(self, field_name):
         field_value = getattr(self, field_name)
         saved_value = self.dao.find(field_value.get_id())
-        if saved_value is None or saved_value["data"] is None or len(saved_value["data"]) == 0:
+        
+        # Check if we need to fetch from API
+        should_fetch_from_api = (
+            saved_value is None or 
+            saved_value["data"] is None or 
+            len(saved_value["data"]) == 0 or
+            field_value.is_data_stale()
+        )
+        
+        if should_fetch_from_api:
+            # Fetch data from API
             if field_name in self.api.get_api_names():
-                saved_value = self.api.get_stock_data(self.name, field_name)
+                api_data = self.api.get_stock_data(self.name, field_name)
             else:
-                saved_value = self.generate_data(field_name)
-            if saved_value is None or len(saved_value) == 0:
+                api_data = self.generate_data(field_name)
+            
+            if api_data is None or len(api_data) == 0:
                 raise Exception("No API {} data for stock {}".format(field_name, self.name))
-            field_value.set_api_data(saved_value)
+            
+            # Set the data
+            field_value.set_api_data(api_data)
+            
+            # Set creation and modification dates
+            today = date.today().strftime("%Y-%m-%d")
+            if field_value.get_creation_date() is None:
+                field_value.set_creation_date(today)
+            field_value.set_modification_date(today)
+            
+            # Save to database
             self.dao.save(field_value)
         else:
+            # Use existing data from database
             field_value.set_db_data(saved_value)
+
+
+
 
     def generate_data(self, field_name):
         if field_name == Data.Mda50Prices:
@@ -301,6 +330,7 @@ class Stock:
 if __name__ == "__main__":
     test_stock = Stock("AAPL")
     test_stock.fetch_from_db()
+    print(test_stock.status)
     # test_stock.save_to_db()
 #    test_stock.fetch_splits_from_api()
 

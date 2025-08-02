@@ -104,7 +104,8 @@ class StockTestCase(unittest.TestCase):
     def test_fetch_stock_data(self):
         stock = Stock("AAPL")
         stock.fetch_stock_data(Data.HistoricalPrices)
-        nr_prices = len(stock.historical_prices["data"]["historical"])
+        hist = stock.historical_prices["data"]["historical"]
+        nr_prices = len(hist)
         self.assertGreater(nr_prices, 250*25)
         stock.fetch_stock_data(Data.BalanceSheetQuarterly)
 
