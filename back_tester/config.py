@@ -11,7 +11,7 @@ class BackTesterConfig:
     """Configuration class for the back tester."""
     
     def __init__(self, config_dict: Dict[str, Any] = None):
-        """Initialize configuration with defaults or provided values."""
+        """Initializapi_coe configuration with defaults or provided values."""
         
         # Get the directory where this config file is located
         config_dir = os.path.dirname(os.path.abspath(__file__))
