@@ -51,7 +51,16 @@ class Transaction:
             raise ValueError("Shares must be positive")
         
         try:
-            datetime.strptime(self.date, '%Y-%m-%d')
+            from datetime import date as date_type
+            # Handle both string and date objects
+            if isinstance(self.date, date_type):
+                # Convert date object to string for validation
+                date_str = self.date.strftime('%Y-%m-%d')
+                datetime.strptime(date_str, '%Y-%m-%d')
+            elif isinstance(self.date, str):
+                datetime.strptime(self.date, '%Y-%m-%d')
+            else:
+                raise ValueError("Date must be string or date object")
         except ValueError:
             raise ValueError("Date must be in YYYY-MM-DD format")
     

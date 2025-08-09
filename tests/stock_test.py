@@ -148,7 +148,7 @@ class StockTestCase(unittest.TestCase):
 
     def test_stock_list(self):
         api = Factory.get_api_instance()
-        stock_list = api.get_stock_list(Market.NasdaqStocks)
+        stock_list = api.get_stock_list(Market.SP500Stocks)
         print(str(stock_list))
         print("")
 

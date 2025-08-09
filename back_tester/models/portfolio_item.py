@@ -48,10 +48,19 @@ class PortfolioItem:
             raise ValueError("Current value cannot be negative")
         
         # Validate dates
-        for date_str in [self.date_added, self.last_modified]:
-            if date_str:
+        for date_val in [self.date_added, self.last_modified]:
+            if date_val:
                 try:
-                    datetime.strptime(date_str, '%Y-%m-%d')
+                    from datetime import date as date_type
+                    # Handle both string and date objects
+                    if isinstance(date_val, date_type):
+                        # Convert date object to string for validation
+                        date_str = date_val.strftime('%Y-%m-%d')
+                        datetime.strptime(date_str, '%Y-%m-%d')
+                    elif isinstance(date_val, str):
+                        datetime.strptime(date_val, '%Y-%m-%d')
+                    else:
+                        raise ValueError("Date must be string or date object")
                 except ValueError:
                     raise ValueError("Date must be in YYYY-MM-DD format")
     

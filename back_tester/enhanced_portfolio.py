@@ -9,7 +9,7 @@ import json
 import logging
 from datetime import date, datetime
 from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass, asdict
+# Python 3.6 compatibility - no dataclasses
 from enum import Enum
 
 from models.portfolio_item import PortfolioItem
@@ -28,29 +28,41 @@ class PerformanceMetric(Enum):
     VOLATILITY = "volatility"
 
 
-@dataclass
 class PerformanceSnapshot:
     """Snapshot of portfolio performance at a specific date."""
-    date: date
-    total_value: float
-    cash_balance: float
-    stock_value: float
-    total_return: float
-    daily_return: float
-    num_positions: int
-    largest_position: Optional[str]
-    largest_position_value: float
+    
+    def __init__(self, date: date, total_value: float, cash_balance: float, 
+                 stock_value: float, total_return: float, daily_return: float,
+                 num_positions: int, largest_position: Optional[str], 
+                 largest_position_value: float):
+        self.date = date
+        self.total_value = total_value
+        self.cash_balance = cash_balance
+        self.stock_value = stock_value
+        self.total_return = total_return
+        self.daily_return = daily_return
+        self.num_positions = num_positions
+        self.largest_position = largest_position
+        self.largest_position_value = largest_position_value
+    
+    def __repr__(self):
+        return f"PerformanceSnapshot(date={self.date}, total_value={self.total_value})"
 
 
-@dataclass
 class RiskMetrics:
     """Risk metrics for the portfolio."""
-    volatility: float
-    sharpe_ratio: float
-    max_drawdown: float
-    var_95: float  # Value at Risk (95% confidence)
-    beta: float
-    alpha: float
+    
+    def __init__(self, volatility: float, sharpe_ratio: float, max_drawdown: float,
+                 var_95: float, beta: float, alpha: float):
+        self.volatility = volatility
+        self.sharpe_ratio = sharpe_ratio
+        self.max_drawdown = max_drawdown
+        self.var_95 = var_95  # Value at Risk (95% confidence)
+        self.beta = beta
+        self.alpha = alpha
+    
+    def __repr__(self):
+        return f"RiskMetrics(volatility={self.volatility:.4f}, sharpe_ratio={self.sharpe_ratio:.4f})"
 
 
 class EnhancedPortfolio:
@@ -149,7 +161,7 @@ class EnhancedPortfolio:
     
     def _execute_buy_transaction(self, transaction: Transaction) -> bool:
         """Execute a buy transaction."""
-        total_cost = transaction.shares * transaction.price_per_share
+        total_cost = transaction.shares * transaction.price
         
         if total_cost > self.cash_balance:
             logger.warning(f"Insufficient cash for buy: need ${total_cost:.2f}, have ${self.cash_balance:.2f}")
@@ -162,13 +174,13 @@ class EnhancedPortfolio:
         if transaction.stock in self.portfolio_items:
             # Update existing position
             item = self.portfolio_items[transaction.stock]
-            item.update_position(transaction.shares, transaction.price_per_share)
+            item.update_position(transaction.shares, transaction.price, transaction.date)
         else:
             # Create new position
             item = PortfolioItem(
                 name=transaction.stock,
                 shares=transaction.shares,
-                average_price=transaction.price_per_share,
+                average_price=transaction.price,
                 current_value=total_cost,
                 date_added=transaction.date,
                 last_modified=transaction.date
@@ -178,7 +190,7 @@ class EnhancedPortfolio:
         # Add to transaction history
         self.transaction_history.append(transaction)
         
-        logger.info(f"Executed buy: {transaction.shares} shares of {transaction.stock} at ${transaction.price_per_share:.2f}")
+        logger.info(f"Executed buy: {transaction.shares} shares of {transaction.stock} at ${transaction.price:.2f}")
         return True
     
     def _execute_sell_transaction(self, transaction: Transaction) -> bool:
@@ -194,7 +206,7 @@ class EnhancedPortfolio:
             return False
         
         # Calculate proceeds
-        proceeds = transaction.shares * transaction.price_per_share
+        proceeds = transaction.shares * transaction.price
         
         # Update cash balance
         self.cash_balance += proceeds
@@ -212,7 +224,7 @@ class EnhancedPortfolio:
         # Add to transaction history
         self.transaction_history.append(transaction)
         
-        logger.info(f"Executed sell: {transaction.shares} shares of {transaction.stock} at ${transaction.price_per_share:.2f}")
+        logger.info(f"Executed sell: {transaction.shares} shares of {transaction.stock} at ${transaction.price:.2f}")
         return True
     
     def update_portfolio_values(self, stock_values: List[Tuple[str, float]]) -> None:
@@ -431,7 +443,17 @@ class EnhancedPortfolio:
             data = {
                 "cash_balance": self.cash_balance,
                 "portfolio_items": {name: item.to_dict() for name, item in self.portfolio_items.items()},
-                "performance_history": [asdict(snapshot) for snapshot in self.performance_history],
+                "performance_history": [{
+                    "date": snapshot.date.isoformat(),
+                    "total_value": snapshot.total_value,
+                    "cash_balance": snapshot.cash_balance,
+                    "stock_value": snapshot.stock_value,
+                    "total_return": snapshot.total_return,
+                    "daily_return": snapshot.daily_return,
+                    "num_positions": snapshot.num_positions,
+                    "largest_position": snapshot.largest_position,
+                    "largest_position_value": snapshot.largest_position_value
+                } for snapshot in self.performance_history],
                 "last_updated": date.today().isoformat()
             }
             

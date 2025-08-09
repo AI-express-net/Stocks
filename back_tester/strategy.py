@@ -54,8 +54,16 @@ class Strategy(ABC):
         """
         # Validate date format
         try:
-            from datetime import datetime
-            datetime.strptime(date, '%Y-%m-%d')
+            from datetime import datetime, date as date_type
+            # Handle both string and date objects
+            if isinstance(date, date_type):
+                # Convert date object to string for validation
+                date_str = date.strftime('%Y-%m-%d')
+                datetime.strptime(date_str, '%Y-%m-%d')
+            elif isinstance(date, str):
+                datetime.strptime(date, '%Y-%m-%d')
+            else:
+                raise ValueError("Date must be string or date object")
         except ValueError:
             raise ValueError("Date must be in YYYY-MM-DD format")
         

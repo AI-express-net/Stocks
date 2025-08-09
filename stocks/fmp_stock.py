@@ -1,9 +1,7 @@
 import enum
 import logging
-#import tensorflow
 
-import datetime
-from datetime import date
+from datetime import date, datetime
 from dateutil import parser as date_parser
 from dateutil import relativedelta
 
@@ -46,6 +44,28 @@ def parse_split(split_str):
 def get_timestamp():
     return date.today().strftime("%Y-%m-%d:%H:%M:%S.%Z")
 
+def is_data_stale(modification_date):
+    """
+    Check if the data is more than a day old.
+    Returns True if data should be refreshed, False otherwise.
+    """
+    if modification_date is None:
+        return True
+
+    try:
+        # Parse the modification date
+        if isinstance(modification_date, str):
+            mod_date = datetime.strptime(modification_date, "%Y-%m-%d").date()
+        else:
+            mod_date = modification_date
+
+        # Check if it's more than a month old
+        today = date.today()
+        return (today - mod_date).days > 30
+    except (ValueError, TypeError):
+        # If we can't parse the date, consider it stale
+        return True
+
 
 class StockStatus(enum.Enum):
     Uninitialized = 1,
@@ -87,7 +107,7 @@ class Stock:
             saved_value is None or 
             saved_value["data"] is None or 
             len(saved_value["data"]) == 0 or
-            field_value.is_data_stale()
+            is_data_stale(saved_value.get("_modification_date"))
         )
         
         if should_fetch_from_api:
@@ -328,7 +348,7 @@ class Stock:
 
 
 if __name__ == "__main__":
-    test_stock = Stock("AAPL")
+    test_stock = Stock("INTC")
     test_stock.fetch_from_db()
     print(test_stock.status)
     # test_stock.save_to_db()

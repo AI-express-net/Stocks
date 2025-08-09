@@ -87,7 +87,8 @@ class MovingAverageStrategy(Strategy):
                     )
                     transactions.append(transaction)
                     available_cash -= transaction.get_total_value()
-            
+                    print("Add transaction: {}".format(transaction))
+
             elif signal == "SELL" and stock in portfolio_dict:
                 # Sell signal for stock in portfolio
                 portfolio_item = portfolio_dict[stock]
@@ -100,7 +101,9 @@ class MovingAverageStrategy(Strategy):
                         transaction_type=TransactionType.SELL
                     )
                     transactions.append(transaction)
-        
+                    available_cash += transaction.get_total_value()
+                    print("Add transaction: {}".format(transaction))
+
         return transactions
     
     def _update_price_history(self, stock_values: List[Tuple[str, float]], date: str):

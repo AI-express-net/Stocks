@@ -11,9 +11,7 @@ This module tests the enhanced back tester functionality including:
 import sys
 import os
 import pytest
-import json
 from datetime import date, timedelta
-from unittest.mock import Mock, patch
 
 # Add the parent directory to the path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -45,8 +43,7 @@ class TestMockValuator:
         valuator.validate_date(valid_date)
         
         # Invalid date
-        with pytest.raises(ValueError):
-            valuator.validate_date(None)
+        assert valuator.validate_date(None) == False
     
     def test_calculate_values(self):
         """Test calculate_values with mock data."""
@@ -142,7 +139,7 @@ class TestEnhancedPortfolio:
         buy_transaction = Transaction(
             stock="AAPL",
             date=date.today(),
-            price_per_share=150.0,
+            price=150.0,
             shares=10,
             transaction_type=TransactionType.BUY
         )
@@ -155,7 +152,7 @@ class TestEnhancedPortfolio:
         sell_transaction = Transaction(
             stock="AAPL",
             date=date.today(),
-            price_per_share=160.0,
+            price=160.0,
             shares=5,
             transaction_type=TransactionType.SELL
         )

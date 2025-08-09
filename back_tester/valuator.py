@@ -50,19 +50,25 @@ class Valuator(ABC):
             raise ValueError(f"No value found for stock {stock} on {date}")
         return values[0][1]
     
-    def validate_date(self, date: str) -> bool:
+    def validate_date(self, date) -> bool:
         """
         Validate date format.
         
         Args:
-            date: Date string to validate
+            date: Date to validate (string or date object)
             
         Returns:
             True if date is in valid format (YYYY-MM-DD)
         """
         try:
-            from datetime import datetime
-            datetime.strptime(date, '%Y-%m-%d')
-            return True
+            from datetime import datetime, date as date_type
+            # Handle both string and date objects
+            if isinstance(date, date_type):
+                return True  # date objects are always valid
+            elif isinstance(date, str):
+                datetime.strptime(date, '%Y-%m-%d')
+                return True
+            else:
+                return False
         except ValueError:
             return False 

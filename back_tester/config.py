@@ -18,14 +18,16 @@ class BackTesterConfig:
         
         # Default configuration values with robust paths
         self.defaults = {
-            'start_cash': 0.0,
+            'start_cash': 10000.0,
             'add_amount': 0.0,
             'start_date': '1970-01-01',
             'end_date': date.today().strftime('%Y-%m-%d'),
             'test_frequency_days': 1,
-            'stock_list_file': os.path.join(os.path.dirname(config_dir), 'stocks', 'US_stocks.json'),
+            'stock_list_file': os.path.join(os.path.dirname(config_dir), 'back_tester/tests', 'SP500_stocks.json'),
             'portfolio_file': os.path.join(config_dir, 'portfolio.json'),
-            'transactions_file': os.path.join(config_dir, 'transactions.json')
+            'transactions_file': os.path.join(config_dir, 'transactions.json'),
+            'strategy': 'moving_average',
+            'valuator': 'real_valuator',
         }
         
         # Load configuration
@@ -56,8 +58,16 @@ class BackTesterConfig:
             # Validate file paths - try multiple possible locations
             stock_list_file = self.config['stock_list_file']
             if not os.path.exists(stock_list_file):
-                # Try alternative paths
+                # Check if this is a user-provided path (not the default)
                 config_dir = os.path.dirname(os.path.abspath(__file__))
+                default_path = os.path.join(os.path.dirname(config_dir), 'stocks', 'US_stocks.json')
+                
+                # If it's not the default path, don't override user's choice
+                if stock_list_file != default_path:
+                    print(f"Warning: Stock list file not found: {stock_list_file}")
+                    return False
+                
+                # Try alternative paths only for default file
                 alternative_paths = [
                     os.path.join(config_dir, 'tests', 'US_stocks.json'),  # Tests directory
                     os.path.join(config_dir, '..', 'stocks', 'US_stocks.json'),  # Original location

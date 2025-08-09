@@ -15,4 +15,6 @@ I want to build a stock back tester. The basic process is as follows:
 - The last step in the main loop is to adjust the 'processed' date. The processed date starts with the start-date and then increments with the test frequency, which is defined by a number of days. Once the processed date has been updated and the processed dat eis not after the end-date, then do the main loop again.
 - All test code needs to in a 'tests' sub-directory and need to use the pytest framework.
 
+- All code must follow the general coding rules in coding_rules.md
+
 When I ask you to 'verify plan' then check if the text above still matches the code. When changes need to be made to update the code to match the above text, show me the changes you're planning. All new code for this back tester needs to go in the 'back_tester' folder. Please write the plan verification results in a file that has the current time-stamp in the name so I can keep a list of changes over time. Also write the whole plan, with all its phases in a file called 'back-tester-plan-' with the current timestamp appended to the filename.

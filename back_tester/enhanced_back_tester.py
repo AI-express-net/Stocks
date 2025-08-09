@@ -12,6 +12,8 @@ import logging
 from datetime import date, datetime, timedelta
 from typing import List, Dict, Optional, Tuple
 
+from models.transaction import TransactionType
+
 # Add the parent directory to the path to import from stocks
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -51,8 +53,10 @@ class EnhancedBackTester:
         )
         self.valuator = RealValuator()
         self.strategy = None  # Will be set by set_strategy
-        self.current_date = config.get("start_date")
-        self.end_date = config.get("end_date")
+        # Convert string dates to datetime objects
+        from datetime import datetime
+        self.current_date = datetime.strptime(config.get("start_date"), '%Y-%m-%d').date()
+        self.end_date = datetime.strptime(config.get("end_date"), '%Y-%m-%d').date()
         self.test_frequency_days = config.get("test_frequency_days")
         self.add_amount = config.get("add_amount")
         
@@ -122,8 +126,8 @@ class EnhancedBackTester:
                 )
                 
                 # Execute transactions (sell first, then buy)
-                sell_transactions = [t for t in transactions if t.transaction_type.value == "SELL"]
-                buy_transactions = [t for t in transactions if t.transaction_type.value == "BUY"]
+                sell_transactions = [t for t in transactions if t.transaction_type == TransactionType.SELL]
+                buy_transactions = [t for t in transactions if t.transaction_type == TransactionType.BUY]
                 
                 # Execute sell transactions first
                 for transaction in sell_transactions:
@@ -178,6 +182,7 @@ class EnhancedBackTester:
         """Load the stock list from the configured file."""
         try:
             stock_list_file = self.config.get("stock_list_file")
+            logger.info(f"Load stocks from {stock_list_file}")
             with open(stock_list_file, 'r') as f:
                 data = json.load(f)
             
@@ -358,8 +363,14 @@ class EnhancedBackTester:
         Returns:
             Dictionary with current portfolio information
         """
+        # Handle both string and date objects for current_date
+        if hasattr(self.current_date, 'isoformat'):
+            current_date_str = self.current_date.isoformat()
+        else:
+            current_date_str = str(self.current_date)
+            
         return {
-            "current_date": self.current_date.isoformat(),
+            "current_date": current_date_str,
             "cash_balance": self.portfolio.get_cash_balance(),
             "total_value": self.portfolio.get_total_value(),
             "num_positions": len(self.portfolio.get_portfolio_items()),
@@ -373,6 +384,7 @@ class EnhancedBackTester:
             initial_cash=self.config.get("start_cash"),
             portfolio_file=self.config.get("portfolio_file")
         )
+        self.strategy = None  # Clear the strategy
         self.performance_snapshots.clear()
         self.transaction_log.clear()
         self.valuator.clear_cache()
