@@ -2,7 +2,7 @@
 Moving Average strategy implementation.
 """
 
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Optional
 from strategy import Strategy
 from models.transaction import Transaction, TransactionType
 
@@ -28,7 +28,7 @@ class MovingAverageStrategy(Strategy):
         self.short_period = short_period
         self.long_period = long_period
         self.max_position_size = max_position_size
-        self.price_history = {}  # Store historical prices for MA calculation
+        self.price_history: Dict[str, List[Tuple[str, float]]] = {}
     
     def generate_transactions(self, portfolio_items: List, stock_values: List[Tuple[str, float]], 
                             date: str, available_cash: float) -> List[Transaction]:
@@ -47,8 +47,6 @@ class MovingAverageStrategy(Strategy):
         # Validate inputs
         self.validate_inputs(portfolio_items, stock_values, date, available_cash)
         
-        transactions = []
-        
         # Update price history
         self._update_price_history(stock_values, date)
         
@@ -59,52 +57,92 @@ class MovingAverageStrategy(Strategy):
         # Create portfolio lookup
         portfolio_dict = {item.name: item for item in portfolio_items}
         
-        for stock, current_price in stock_values:
-            # Calculate moving averages
-            short_ma = self._calculate_moving_average(stock, self.short_period)
-            long_ma = self._calculate_moving_average(stock, self.long_period)
-            
-            if short_ma is None or long_ma is None:
-                continue  # Not enough data for MA calculation
-            
-            # Generate signals
-            signal = self._generate_signal(short_ma, long_ma, current_price)
-            
-            if signal == "BUY" and stock not in portfolio_dict:
-                # Buy signal for stock not in portfolio
-                max_position_value = total_portfolio_value * self.max_position_size
-                max_shares = int(max_position_value / current_price)
-                affordable_shares = int(available_cash / current_price)
-                shares_to_buy = min(max_shares, affordable_shares)
-                
-                if shares_to_buy > 0:
-                    transaction = Transaction(
-                        stock=stock,
-                        date=date,
-                        price=current_price,
-                        shares=shares_to_buy,
-                        transaction_type=TransactionType.BUY
-                    )
-                    transactions.append(transaction)
-                    available_cash -= transaction.get_total_value()
-                    print("Add transaction: {}".format(transaction))
-
-            elif signal == "SELL" and stock in portfolio_dict:
-                # Sell signal for stock in portfolio
-                portfolio_item = portfolio_dict[stock]
-                if portfolio_item.shares > 0:
-                    transaction = Transaction(
-                        stock=stock,
-                        date=date,
-                        price=current_price,
-                        shares=portfolio_item.shares,
-                        transaction_type=TransactionType.SELL
-                    )
-                    transactions.append(transaction)
-                    available_cash += transaction.get_total_value()
-                    print("Add transaction: {}".format(transaction))
-
-        return transactions
+        # Generate transactions using list comprehension
+        transactions = [
+            self._create_buy_transaction(stock, price, date, total_portfolio_value, available_cash)
+            for stock, price in stock_values
+            if self._should_buy(stock, price, portfolio_dict)
+        ]
+        
+        # Filter out None transactions and update available cash
+        buy_transactions = [t for t in transactions if t is not None]
+        for transaction in buy_transactions:
+            available_cash -= transaction.get_total_value()
+        
+        # Generate sell transactions
+        sell_transactions = [
+            self._create_sell_transaction(stock, price, date, portfolio_dict[stock])
+            for stock, price in stock_values
+            if self._should_sell(stock, price, portfolio_dict)
+        ]
+        
+        # Filter out None transactions
+        sell_transactions = [t for t in sell_transactions if t is not None]
+        
+        return buy_transactions + sell_transactions
+    
+    def _should_buy(self, stock: str, price: float, portfolio_dict: Dict) -> bool:
+        """Determine if we should buy a stock."""
+        if stock in portfolio_dict:
+            return False
+        
+        short_ma = self._calculate_moving_average(stock, self.short_period)
+        long_ma = self._calculate_moving_average(stock, self.long_period)
+        
+        if short_ma is None or long_ma is None:
+            return False
+        
+        signal = self._generate_signal(short_ma, long_ma, price)
+        return signal == "BUY"
+    
+    def _should_sell(self, stock: str, price: float, portfolio_dict: Dict) -> bool:
+        """Determine if we should sell a stock."""
+        if stock not in portfolio_dict:
+            return False
+        
+        portfolio_item = portfolio_dict[stock]
+        if portfolio_item.shares <= 0:
+            return False
+        
+        short_ma = self._calculate_moving_average(stock, self.short_period)
+        long_ma = self._calculate_moving_average(stock, self.long_period)
+        
+        if short_ma is None or long_ma is None:
+            return False
+        
+        signal = self._generate_signal(short_ma, long_ma, price)
+        return signal == "SELL"
+    
+    def _create_buy_transaction(self, stock: str, price: float, date: str, 
+                              total_portfolio_value: float, available_cash: float) -> Optional[Transaction]:
+        """Create a buy transaction if conditions are met."""
+        max_position_value = total_portfolio_value * self.max_position_size
+        max_shares = int(max_position_value / price)
+        affordable_shares = int(available_cash / price)
+        shares_to_buy = min(max_shares, affordable_shares)
+        
+        if shares_to_buy > 0:
+            return Transaction(
+                stock=stock,
+                date=date,
+                price=price,
+                shares=shares_to_buy,
+                transaction_type=TransactionType.BUY
+            )
+        return None
+    
+    def _create_sell_transaction(self, stock: str, price: float, date: str, 
+                               portfolio_item) -> Optional[Transaction]:
+        """Create a sell transaction if conditions are met."""
+        if portfolio_item.shares > 0:
+            return Transaction(
+                stock=stock,
+                date=date,
+                price=price,
+                shares=portfolio_item.shares,
+                transaction_type=TransactionType.SELL
+            )
+        return None
     
     def _update_price_history(self, stock_values: List[Tuple[str, float]], date: str):
         """Update price history with current prices."""
@@ -113,7 +151,7 @@ class MovingAverageStrategy(Strategy):
                 self.price_history[stock] = []
             self.price_history[stock].append((date, price))
     
-    def _calculate_moving_average(self, stock: str, period: int) -> float:
+    def _calculate_moving_average(self, stock: str, period: int) -> Optional[float]:
         """Calculate moving average for a stock."""
         if stock not in self.price_history:
             return None

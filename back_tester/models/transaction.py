@@ -2,6 +2,7 @@
 Transaction data model for the back tester.
 """
 
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Dict, Any
 from enum import Enum
@@ -13,30 +14,21 @@ class TransactionType(Enum):
     SELL = "sell"
 
 
+@dataclass
 class Transaction:
     """Represents a stock transaction."""
     
-    def __init__(self, stock: str, date: str, price: float, shares: int, 
-                 transaction_type: TransactionType, transaction_id: str = None):
-        """
-        Initialize a transaction.
-        
-        Args:
-            stock: Stock symbol
-            date: Transaction date (YYYY-MM-DD format)
-            price: Price per share
-            shares: Number of shares
-            transaction_type: BUY or SELL
-            transaction_id: Optional unique identifier
-        """
-        self.stock = stock
-        self.date = date
-        self.price = price
-        self.shares = shares
-        self.transaction_type = transaction_type
-        self.transaction_id = transaction_id or self._generate_id()
-        
-        # Validate inputs
+    stock: str
+    date: str
+    price: float
+    shares: int
+    transaction_type: TransactionType
+    transaction_id: str = field(default_factory=lambda: None)
+    
+    def __post_init__(self):
+        """Validate transaction data after initialization."""
+        if self.transaction_id is None:
+            self.transaction_id = self._generate_id()
         self._validate()
     
     def _validate(self):

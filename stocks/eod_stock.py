@@ -17,7 +17,7 @@ logging.basicConfig(format='%(asctime)s [%(levelname)s] "[%(filename)s:%(lineno)
 # API Configuration
 FUNDAMENTALS_API = f"{API_BASE}/fundamentals/{{}}?apikey={API_KEY}"
 EOD_API = f"https://eodhistoricaldata.com/api/eod/{{}}?api_token={API_KEY}&period=d&fmt=json&from=2005-09-30&to=2020-09-30"
-SPLITS_API = f"https://eodhistoricaldata.com/api/splits/{{}}?api_token={API_KEY}&fmt=json"
+SPLITS_API = f"https://eodhistoricaldata.com/api/splits/{{}} ?api_token={API_KEY}&fmt=json"
 
 MIN_RATE = 1.03
 

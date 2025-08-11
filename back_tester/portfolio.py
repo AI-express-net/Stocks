@@ -24,6 +24,21 @@ class Portfolio:
         self.portfolio_items = portfolio_items or []
         self._create_item_lookup()
     
+    @property
+    def total_positions(self) -> int:
+        """Get the total number of positions in the portfolio."""
+        return len(self.portfolio_items)
+    
+    @property
+    def active_positions(self) -> int:
+        """Get the number of positions with shares > 0."""
+        return sum(1 for item in self.portfolio_items if item.shares > 0)
+    
+    @property
+    def stock_symbols(self) -> List[str]:
+        """Get list of stock symbols in the portfolio."""
+        return [item.name for item in self.portfolio_items]
+    
     def _create_item_lookup(self):
         """Create a lookup dictionary for portfolio items."""
         self._item_lookup = {item.name: item for item in self.portfolio_items}
@@ -101,7 +116,7 @@ class Portfolio:
         # Remove cash
         self.remove_cash(total_cost)
         
-        # Update or create portfolio item
+        # Get or create portfolio item
         portfolio_item = self.get_portfolio_item(transaction.stock)
         if portfolio_item is None:
             # Create new portfolio item
@@ -207,7 +222,7 @@ class Portfolio:
     
     def __str__(self) -> str:
         """String representation of portfolio."""
-        return f"Portfolio(cash=${self.cash:.2f}, positions={len(self.portfolio_items)})"
+        return f"Portfolio(cash=${self.cash:.2f}, positions={self.total_positions})"
     
     def __repr__(self) -> str:
         """Detailed string representation."""

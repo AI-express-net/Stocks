@@ -2,35 +2,24 @@
 Portfolio item data model for the back tester.
 """
 
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Dict, Any
 
 
+@dataclass
 class PortfolioItem:
     """Represents a stock position in the portfolio."""
     
-    def __init__(self, name: str, shares: int = 0, average_price: float = 0.0,
-                 current_value: float = 0.0, date_added: str = None, 
-                 last_modified: str = None):
-        """
-        Initialize a portfolio item.
-        
-        Args:
-            name: Stock symbol
-            shares: Number of shares owned
-            average_price: Average purchase price per share
-            current_value: Current market value of the position
-            date_added: Date when stock was first added to portfolio
-            last_modified: Date when position was last modified
-        """
-        self.name = name
-        self.shares = shares
-        self.average_price = average_price
-        self.current_value = current_value
-        self.date_added = date_added or datetime.now().strftime('%Y-%m-%d')
-        self.last_modified = last_modified or datetime.now().strftime('%Y-%m-%d')
-        
-        # Validate inputs
+    name: str
+    shares: int = 0
+    average_price: float = 0.0
+    current_value: float = 0.0
+    date_added: str = field(default_factory=lambda: datetime.now().strftime('%Y-%m-%d'))
+    last_modified: str = field(default_factory=lambda: datetime.now().strftime('%Y-%m-%d'))
+    
+    def __post_init__(self):
+        """Validate portfolio item data after initialization."""
         self._validate()
     
     def _validate(self):

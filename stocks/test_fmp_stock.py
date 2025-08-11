@@ -145,7 +145,8 @@ class TestStockDataFetching:
         assert mock_dao.save.call_count == 1
     
     @patch('fmp_stock.Factory')
-    def test_fetch_stock_data_with_existing_data(self, mock_factory):
+    @patch('fmp_stock.is_data_stale')
+    def test_fetch_stock_data_with_existing_data(self, mock_is_data_stale, mock_factory):
         """Test fetch_stock_data when data already exists in DAO."""
         # Mock the factory
         mock_api = Mock()
@@ -166,10 +167,10 @@ class TestStockDataFetching:
         mock_api.get_api_names.return_value = ["quote"]
         mock_api.get_stock_data.return_value = [{"symbol": "AAPL", "price": 150.0}]
         
-        stock = Stock("AAPL")
+        # Mock is_data_stale to return False (data is not stale)
+        mock_is_data_stale.return_value = False
         
-        # Mock the quote entity's is_data_stale method to return False
-        stock.quote.is_data_stale = Mock(return_value=False)
+        stock = Stock("AAPL")
         
         # Test fetching quote data
         stock.fetch_stock_data(Data.Quote)

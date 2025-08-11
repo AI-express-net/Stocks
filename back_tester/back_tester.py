@@ -5,12 +5,14 @@ Main back tester engine.
 import json
 import os
 from datetime import datetime, timedelta
-from typing import List, Tuple
+from typing import List, Tuple, Optional
+from pathlib import Path
 from config import BackTesterConfig
 from portfolio import Portfolio
 from valuator import Valuator
 from strategy import Strategy
 from models.transaction import Transaction
+from utils import save_json, load_json, append_json
 
 
 class BackTester:
@@ -28,19 +30,47 @@ class BackTester:
         self.config = config
         self.valuator = valuator
         self.strategy = strategy
-        self.portfolio = None
-        self.transactions = []
+        self.portfolio: Optional[Portfolio] = None
+        self.transactions: List[Transaction] = []
+        self._is_running = False
         
         # Validate configuration
         if not self.config.validate():
             raise ValueError("Invalid configuration")
     
+    def __enter__(self):
+        """Context manager entry."""
+        self._cleanup_files()
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit."""
+        if self._is_running:
+            self._save_final_state()
+    
+    def _cleanup_files(self):
+        """Clean up output files before starting."""
+        files_to_clean = [
+            Path(self.config.portfolio_file),
+            Path(self.config.transactions_file)
+        ]
+        
+        for file_path in files_to_clean:
+            if file_path.exists():
+                file_path.unlink()
+    
+    def _save_final_state(self):
+        """Save final portfolio state."""
+        if self.portfolio:
+            self.portfolio.save_to_file(self.config.portfolio_file)
+    
     def run(self):
         """Run the back tester."""
+        self._is_running = True
         print("Starting back tester...")
         
         # Load portfolio
-        self.portfolio = Portfolio.load_from_file(self.config.get('portfolio_file'))
+        self.portfolio = Portfolio.load_from_file(self.config.portfolio_file)
         print(f"Loaded portfolio: {self.portfolio}")
         
         # Load existing transactions
@@ -51,9 +81,9 @@ class BackTester:
         print(f"Loaded {len(stock_list)} stocks")
         
         # Initialize date
-        current_date = datetime.strptime(self.config.get('start_date'), '%Y-%m-%d')
-        end_date = datetime.strptime(self.config.get('end_date'), '%Y-%m-%d')
-        frequency_days = self.config.get('test_frequency_days')
+        current_date = datetime.strptime(self.config.start_date, '%Y-%m-%d')
+        end_date = datetime.strptime(self.config.end_date, '%Y-%m-%d')
+        frequency_days = self.config.test_frequency_days
         
         print(f"Running from {current_date.date()} to {end_date.date()}")
         print(f"Test frequency: {frequency_days} day(s)")
@@ -69,7 +99,7 @@ class BackTester:
             
             try:
                 # Add cash amount
-                add_amount = self.config.get('add_amount')
+                add_amount = self.config.add_amount
                 if add_amount > 0:
                     self.portfolio.add_cash(add_amount)
                     print(f"Added ${add_amount:.2f} to portfolio")
@@ -103,77 +133,76 @@ class BackTester:
                     # Execute buy transactions
                     for transaction in buy_transactions:
                         self._execute_transaction(transaction)
-                else:
-                    print("No transactions generated")
                 
-                # Save portfolio
-                self.portfolio.save_to_file(self.config.get('portfolio_file'))
+                # Save portfolio state
+                self.portfolio.save_to_file(self.config.portfolio_file)
                 
             except Exception as e:
-                print(f"Error on {date_str}: {e}")
-                # Continue to next iteration
+                print(f"Error in iteration {iteration}: {e}")
+                break
             
-            # Move to next date
+            # Update date
             current_date += timedelta(days=frequency_days)
         
         print(f"\nBack testing completed after {iteration} iterations")
         print(f"Final portfolio value: ${self.portfolio.get_total_value():.2f}")
+        self._is_running = False
     
     def _load_transactions(self):
         """Load existing transactions from file."""
-        transactions_file = self.config.get('transactions_file')
-        if os.path.exists(transactions_file):
-            try:
-                with open(transactions_file, 'r') as f:
-                    transactions_data = json.load(f)
-                self.transactions = [Transaction.from_dict(t) for t in transactions_data]
+        try:
+            transactions_file = Path(self.config.transactions_file)
+            if transactions_file.exists():
+                data = load_json(transactions_file, default=[])
+                self.transactions = [Transaction.from_dict(t) for t in data]
                 print(f"Loaded {len(self.transactions)} existing transactions")
-            except Exception as e:
-                print(f"Warning: Could not load transactions: {e}")
-                self.transactions = []
-        else:
+        except Exception as e:
+            print(f"Warning: Could not load transactions: {e}")
             self.transactions = []
     
     def _save_transaction(self, transaction: Transaction):
         """Save transaction to file."""
-        self.transactions.append(transaction)
-        
-        transactions_file = self.config.get('transactions_file')
         try:
-            os.makedirs(os.path.dirname(transactions_file), exist_ok=True)
-            with open(transactions_file, 'w') as f:
-                json.dump([t.to_dict() for t in self.transactions], f, indent=2)
+            append_json(transaction.to_dict(), Path(self.config.transactions_file))
+            self.transactions.append(transaction)
         except Exception as e:
             print(f"Warning: Could not save transaction: {e}")
     
     def _execute_transaction(self, transaction: Transaction):
-        """Execute a single transaction."""
+        """Execute a transaction."""
         try:
             self.portfolio.execute_transaction(transaction)
             self._save_transaction(transaction)
             print(f"Executed: {transaction}")
-        except ValueError as e:
-            print(f"Transaction failed: {e}")
         except Exception as e:
-            print(f"Unexpected error executing transaction: {e}")
+            print(f"Failed to execute transaction: {e}")
     
     def _load_stock_list(self) -> List[str]:
         """Load stock list from file."""
-        stock_list_file = self.config.get('stock_list_file')
         try:
-            with open(stock_list_file, 'r') as f:
-                data = json.load(f)
-            return data.get('stocks', [])
+            stock_file = Path(self.config.stock_list_file)
+            if stock_file.exists():
+                data = load_json(stock_file, default=[])
+                if isinstance(data, list):
+                    return data
+                else:
+                    print("Warning: Stock list file is not a list, using empty list")
+                    return []
+            else:
+                print(f"Warning: Stock list file not found: {stock_file}")
+                return []
         except Exception as e:
             print(f"Warning: Could not load stock list: {e}")
             return []
     
     def get_results(self) -> dict:
         """Get back testing results."""
+        if not self.portfolio:
+            return {}
+        
         return {
-            'final_portfolio_value': self.portfolio.get_total_value(),
+            'portfolio': self.portfolio.to_dict(),
+            'transactions': [t.to_dict() for t in self.transactions],
             'total_transactions': len(self.transactions),
-            'final_cash': self.portfolio.cash,
-            'final_positions': len(self.portfolio.portfolio_items),
-            'portfolio_summary': self.portfolio.to_dict()
+            'final_value': self.portfolio.get_total_value()
         } 

@@ -27,7 +27,11 @@ class TestFmpApi:
         """Set up test fixtures."""
         self.api = FmpApi()
         self.test_symbol = "AAPL"  # Use AAPL as it's a reliable stock
-    
+
+    def test_api_key(self):
+        api_key = os.getenv("FMP_API_KEY", "{API_KEY}")
+        assert api_key != "{API_KEY}"
+
     def test_api_creation(self):
         """Test that the API object can be created."""
         assert self.api is not None
