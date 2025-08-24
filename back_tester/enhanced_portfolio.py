@@ -7,6 +7,7 @@ tracking, risk metrics, and advanced portfolio management features.
 
 import json
 import logging
+import os
 from datetime import date, datetime
 from typing import Dict, List, Optional, Tuple
 # Python 3.6 compatibility - no dataclasses
@@ -440,6 +441,12 @@ class EnhancedPortfolio:
     def save_to_file(self) -> None:
         """Save portfolio to file."""
         try:
+            # Ensure results directory exists
+            results_dir = os.path.dirname(self.portfolio_file)
+            if results_dir and not os.path.exists(results_dir):
+                os.makedirs(results_dir)
+                logger.info(f"Created results directory: {results_dir}")
+            
             data = {
                 "cash_balance": self.cash_balance,
                 "portfolio_items": {name: item.to_dict() for name, item in self.portfolio_items.items()},

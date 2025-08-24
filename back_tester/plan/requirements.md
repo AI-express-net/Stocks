@@ -22,4 +22,4 @@ I want to build a stock back tester. The basic process is as follows:
 - Create the same files containing the portfolio, the results and the transactions for the benchmark.
 - At the end, a graph is created that compares the performance of the back-tester and the benchmark.
 - When a stock in the portfolio passes an ex-dividend date, the portfolio gets added cash equals to the dividend amount times the number of shares held.
-- Dividend payments should show up in the transaction list as a cash transaction. Similarly the periodic addition of cash should be added as a transaction and logged.
+- Dividend payments should show up in the transaction list as a cash transaction. Similarly, the periodic addition of cash should be added as a transaction and logged.

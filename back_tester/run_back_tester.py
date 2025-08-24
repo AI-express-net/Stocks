@@ -42,8 +42,8 @@ def create_config_from_args(args):
         'start_date': args.start_date,
         'end_date': args.end_date,
         'test_frequency_days': args.frequency,
-        'portfolio_file': f"{args.strategy}_portfolio.json",
-        'transactions_file': f"{args.strategy}_transactions.json"
+        'portfolio_file': f"results/{args.strategy}_portfolio.json",
+        'transactions_file': f"results/{args.strategy}_transactions.json"
     }
     
     # Add stock list file if provided
@@ -149,7 +149,7 @@ def run_back_tester(args):
     print(f"Success Rate: {results['trading_metrics']['success_rate']:.1f}%")
     
     # Export results
-    results_file = f"{args.strategy}_results.json"
+    results_file = f"results/{args.strategy}_results.json"
     back_tester.export_results(results_file)
     print(f"\nResults exported to: {results_file}")
     

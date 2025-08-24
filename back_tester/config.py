@@ -24,16 +24,16 @@ class BackTesterConfig:
         'back_tester/tests', 'SP500_stocks.json'
     ))
     portfolio_file: str = field(default_factory=lambda: os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), 'portfolio.json'
+        os.path.dirname(os.path.abspath(__file__)), 'results', 'portfolio.json'
     ))
     transactions_file: str = field(default_factory=lambda: os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), 'transactions.json'
+        os.path.dirname(os.path.abspath(__file__)), 'results', 'transactions.json'
     ))
     strategy: str = 'moving_average'
     valuator: str = 'real_valuator'
     benchmark_instrument: str = 'SP500'
     benchmark_file: str = field(default_factory=lambda: os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), 'benchmark_portfolio.json'
+        os.path.dirname(os.path.abspath(__file__)), 'results', 'benchmark_portfolio.json'
     ))
     dividend_file: str = field(default_factory=lambda: os.path.join(
         os.path.dirname(os.path.abspath(__file__)), 'sample_dividends.json'

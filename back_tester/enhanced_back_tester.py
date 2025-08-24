@@ -7,6 +7,7 @@ and includes advanced portfolio management features.
 
 import json
 import logging
+import os
 from datetime import date, datetime, timedelta
 from typing import List, Dict, Optional, Tuple, Any
 
@@ -389,6 +390,12 @@ class EnhancedBackTester:
             filename: Output filename
         """
         try:
+            # Ensure results directory exists
+            results_dir = os.path.dirname(filename)
+            if results_dir and not os.path.exists(results_dir):
+                os.makedirs(results_dir)
+                logger.info(f"Created results directory: {results_dir}")
+            
             results = self._generate_results(0, 0)  # We'll get actual counts from transaction log
             
             # Count actual transactions
