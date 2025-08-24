@@ -48,17 +48,19 @@ class EnhancedBackTester:
         """
         self.config = config
         self.portfolio = EnhancedPortfolio(
-            initial_cash=config.get("start_cash"),
-            portfolio_file=config.get("portfolio_file")
+            initial_cash=config.start_cash,
+            portfolio_file=config.portfolio_file
         )
         self.valuator = RealValuator()
         self.strategy = None  # Will be set by set_strategy
         # Convert string dates to datetime objects
         from datetime import datetime
-        self.current_date = datetime.strptime(config.get("start_date"), '%Y-%m-%d').date()
-        self.end_date = datetime.strptime(config.get("end_date"), '%Y-%m-%d').date()
-        self.test_frequency_days = config.get("test_frequency_days")
-        self.add_amount = config.get("add_amount")
+        self.current_date = datetime.strptime(config.start_date, '%Y-%m-%d').date()
+        self.end_date = datetime.strptime(config.end_date, '%Y-%m-%d').date()
+        self.test_frequency_days = config.test_frequency_days
+        self.add_amount = config.add_amount
+        self.add_amount_frequency_days = config.add_amount_frequency_days
+        self.last_cash_addition_date = self.current_date
         
         # Performance tracking
         self.performance_snapshots: List[PerformanceSnapshot] = []
@@ -104,9 +106,13 @@ class EnhancedBackTester:
                 iteration_count += 1
                 logger.debug(f"Iteration {iteration_count}: Processing date {self.current_date}")
                 
-                # Add cash if configured
+                # Add cash if configured and frequency period has elapsed
                 if self.add_amount > 0:
-                    self.portfolio.add_cash(self.add_amount)
+                    days_since_last_addition = (self.current_date - self.last_cash_addition_date).days
+                    if days_since_last_addition >= self.add_amount_frequency_days:
+                        self.portfolio.add_cash(self.add_amount)
+                        self.last_cash_addition_date = self.current_date
+                        logger.info(f"Added ${self.add_amount} to portfolio on {self.current_date}")
                 
                 # Get current stock values
                 stock_values = self.valuator.calculate_values(self.stock_list, self.current_date)
@@ -181,7 +187,7 @@ class EnhancedBackTester:
     def _load_stock_list(self) -> List[str]:
         """Load the stock list from the configured file."""
         try:
-            stock_list_file = self.config.get("stock_list_file")
+            stock_list_file = self.config.stock_list_file
             logger.info(f"Load stocks from {stock_list_file}")
             with open(stock_list_file, 'r') as f:
                 data = json.load(f)
@@ -202,7 +208,7 @@ class EnhancedBackTester:
     def _save_transactions(self) -> None:
         """Save transaction log to file."""
         try:
-            transactions_file = self.config.get("transactions_file")
+            transactions_file = self.config.transactions_file
             
             # Load existing transactions
             existing_transactions = []
@@ -264,7 +270,7 @@ class EnhancedBackTester:
                 "end_date": end_date.isoformat(),
                 "days_tested": days_tested,
                 "test_frequency_days": self.test_frequency_days,
-                "initial_cash": self.config.get("start_cash"),
+                "initial_cash": self.config.start_cash,
                 "add_amount": self.add_amount,
                 "num_stocks": len(self.stock_list)
             },
@@ -379,11 +385,12 @@ class EnhancedBackTester:
     
     def reset(self) -> None:
         """Reset the back tester to initial state."""
-        self.current_date = self.config.get("start_date")
+        self.current_date = datetime.strptime(self.config.start_date, '%Y-%m-%d').date()
         self.portfolio = EnhancedPortfolio(
-            initial_cash=self.config.get("start_cash"),
-            portfolio_file=self.config.get("portfolio_file")
+            initial_cash=self.config.start_cash,
+            portfolio_file=self.config.portfolio_file
         )
+        self.last_cash_addition_date = self.current_date
         self.strategy = None  # Clear the strategy
         self.performance_snapshots.clear()
         self.transaction_log.clear()

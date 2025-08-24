@@ -1,0 +1,21 @@
+
+I want to build a stock back tester. The basic process is as follows:
+- Given a start cash amount in US dollars. The default is $10000.
+- Given an amount in US dollars that is added to the cash amount after each a set frequency of the back-tester. The default is $0. This called the 'add-amount'. The default frequency is once per month.
+- Given a start-date and an end-date. The default start-date is 1-1-1970. The default end-date is today.
+- A test frequency that defines how often the back-tester calculates the stock values. The default values is once per day between the start-date and the end-date.
+- Given a set of stocks as the initial portfolio. It could be empty at the start by default. These stocks should be written to file named portfolio.json each time it is updated. For each stock it should keep the name of the stock, the number of shares of that stock in the portfolio, the average price the shares were bought for, the value of the shares based on the stock price for the most recent 'processed' date (processed date is defined below), the date the stock was added to the list, the most recent date the number of shares changed and write it as JSON in the portfolio.json file.
+- The portfolio.json file also keeps the total cash amount.
+- Given a file with names of stocks to choose from. By default this is the file US_stocks.json
+- An implementation of an abstract interface that calculates the value of a list of stocks on a given day. This is called a 'valuator' class. The output is a list of stock names and the value for the stock on the 'processed' date.
+- There's a file called 'transactions.json' that starts empty and to which all transactions are appended.
+- An implementation of an abstract interface that takes as input the stocks in the portfolio and the list of name and value pairs of stocks as calculated by the 'valuator'. This is called a 'strategy' class. The output of the strategy is a list of transactions.
+- A 'transaction' is defined as a stock that was bought or sold, the date and the price per share of the transaction.
+- The main function of the back-tester is to start at the start-date, add the cash amount that is in 'added-amount' to the portfolio cash and the use the valuator to calculate the value of all the stocks in the list of stocks to choose from. Then call the 'strategy' to return a list of transactions to perform, if any.
+- Using the list of transactions from the strategy class the portfolio is updated. An error is generated when the number of shares sold exceeds the number of shares in the portfolio. The 'sell' transactions are performed first, then the 'buy' transactions. The cash value in the portfolio changes based on the number of shares that are sold or bought at the 'processed' date. There's an error when the cash value in the portfolio drops below zero.
+- The last step in the main loop is to adjust the 'processed' date. The processed date starts with the start-date and then increments with the test frequency, which is defined by a number of days. Once the processed date has been updated and the processed dat eis not after the end-date, then do the main loop again.
+- All test code needs to in a 'tests' sub-directory and need to use the pytest framework.
+- When the application runs again, delete the files saved with the portfolio, the results and the transactions.
+- While the back-tester is running, there's a benchmark buy-and-hold strategy that is called to benchmark the performance of the back-tester. For each transaction for the portfolio, a transaction for the same dollar amount is made for the instrument of the back-tester. The default instrument of the benchmark is the SP500 index.
+- At the end, a graph is created that compares the performance of the back-tester and the benchmark.
+- When a stock in the portfolio passes an ex-dividend date, the portfolio gets added cash equals to the dividend amount times the number of shares held.

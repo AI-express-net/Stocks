@@ -164,7 +164,7 @@ class EnhancedPortfolio:
         total_cost = transaction.shares * transaction.price
         
         if total_cost > self.cash_balance:
-            logger.warning(f"Insufficient cash for buy: need ${total_cost:.2f}, have ${self.cash_balance:.2f}")
+            # logger.warning(f"Insufficient cash for buy: need ${total_cost:.2f}, have ${self.cash_balance:.2f}")
             return False
         
         # Update cash balance

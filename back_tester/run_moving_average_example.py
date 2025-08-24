@@ -33,10 +33,10 @@ def run_moving_average_example():
     })
     
     print(f"Configuration:")
-    print(f"  Start Cash: ${config.get('start_cash'):,.2f}")
-    print(f"  Add Amount: ${config.get('add_amount'):,.2f}")
-    print(f"  Date Range: {config.get('start_date')} to {config.get('end_date')}")
-    print(f"  Test Frequency: {config.get('test_frequency_days')} days")
+    print(f"  Start Cash: ${config.start_cash:,.2f}")
+    print(f"  Add Amount: ${config.add_amount:,.2f}")
+    print(f"  Date Range: {config.start_date} to {config.end_date}")
+    print(f"  Test Frequency: {config.test_frequency_days} days")
     print()
     
     # Create components

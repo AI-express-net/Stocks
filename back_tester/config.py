@@ -3,7 +3,7 @@ Configuration settings for the back tester.
 """
 
 import os
- import json
+import json
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Dict, Any, Optional
@@ -15,6 +15,7 @@ class BackTesterConfig:
     
     start_cash: float = 10000.0
     add_amount: float = 0.0
+    add_amount_frequency_days: int = 30  # Monthly default
     start_date: str = '1970-01-01'
     end_date: str = field(default_factory=lambda: date.today().strftime('%Y-%m-%d'))
     test_frequency_days: int = 1
@@ -31,10 +32,7 @@ class BackTesterConfig:
     strategy: str = 'moving_average'
     valuator: str = 'real_valuator'
     
-    def __post_init__(self):
-        """Validate configuration after initialization."""
-        if not self.validate():
-            raise ValueError("Invalid configuration")
+
     
     def get(self, key: str, default=None):
         """Get a configuration value."""
@@ -58,6 +56,7 @@ class BackTesterConfig:
             assert self.start_cash >= 0, "Start cash must be non-negative"
             assert self.add_amount >= 0, "Add amount must be non-negative"
             assert self.test_frequency_days > 0, "Test frequency must be positive"
+            assert self.add_amount_frequency_days > 0, "Add amount frequency must be positive"
             
             # Validate file paths - try multiple possible locations
             if not os.path.exists(self.stock_list_file):
@@ -113,6 +112,7 @@ class BackTesterConfig:
         return {
             'start_cash': self.start_cash,
             'add_amount': self.add_amount,
+            'add_amount_frequency_days': self.add_amount_frequency_days,
             'start_date': self.start_date,
             'end_date': self.end_date,
             'test_frequency_days': self.test_frequency_days,

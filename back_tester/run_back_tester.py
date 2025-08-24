@@ -43,6 +43,7 @@ def create_config_from_args(args):
     config_dict = {
         'start_cash': args.start_cash,
         'add_amount': args.add_amount,
+        'add_amount_frequency_days': args.add_frequency,
         'start_date': args.start_date,
         'end_date': args.end_date,
         'test_frequency_days': args.frequency,
@@ -54,7 +55,7 @@ def create_config_from_args(args):
     if hasattr(args, 'stock_list_file') and args.stock_list_file:
         config_dict['stock_list_file'] = args.stock_list_file
     
-    return BackTesterConfig(config_dict)
+    return BackTesterConfig(**config_dict)
 
 
 def create_strategy(strategy_name, **kwargs):
@@ -92,11 +93,12 @@ def run_back_tester(args):
     
     print(f"Configuration:")
     print(f"  Strategy: {args.strategy}")
-    print(f"  Start Cash: ${config.get('start_cash'):,.2f}")
-    print(f"  Add Amount: ${config.get('add_amount'):,.2f}")
-    print(f"  Date Range: {config.get('start_date')} to {config.get('end_date')}")
-    print(f"  Test Frequency: {config.get('test_frequency_days')} days")
-    print(f"  Stock List File: {config.get('stock_list_file')}")
+    print(f"  Start Cash: ${config.start_cash:,.2f}")
+    print(f"  Add Amount: ${config.add_amount:,.2f}")
+    print(f"  Add Frequency: {config.add_amount_frequency_days} days")
+    print(f"  Date Range: {config.start_date} to {config.end_date}")
+    print(f"  Test Frequency: {config.test_frequency_days} days")
+    print(f"  Stock List File: {config.stock_list_file}")
     
     if args.strategy.lower() == 'moving_average':
         print(f"  Moving Average: {args.short_period}/{args.long_period} days")
@@ -188,16 +190,18 @@ Examples:
                        default='moving_average', help='Trading strategy to use')
     
     # Configuration options
-    parser.add_argument('--start-cash', type=float, default=testConfig.config.get("start_cash"),
-                       help=f'Starting cash amount (default: {testConfig.config.get("start_cash")})')
-    parser.add_argument('--add-amount', type=float, default=testConfig.config.get("add_amount"),
-                       help=f'Amount to add each iteration (default: {testConfig.config.get("add_amount")}'),
+    parser.add_argument('--start-cash', type=float, default=testConfig.start_cash,
+                       help=f'Starting cash amount (default: {testConfig.start_cash})')
+    parser.add_argument('--add-amount', type=float, default=testConfig.add_amount,
+                       help=f'Amount to add each frequency period (default: {testConfig.add_amount})')
+    parser.add_argument('--add-frequency', type=int, default=testConfig.add_amount_frequency_days,
+                       help=f'Days between cash additions (default: {testConfig.add_amount_frequency_days})')
     parser.add_argument('--start-date', default='2023-01-01',
                        help='Start date (YYYY-MM-DD, default: 2023-01-01)')
     parser.add_argument('--end-date', default='2023-12-31',
                        help='End date (YYYY-MM-DD, default: 2023-12-31)')
-    parser.add_argument('--frequency', type=int, default=7,
-                       help='Test frequency in days (default: 7)')
+    parser.add_argument('--frequency', type=int, default=1,
+                       help='Test frequency in days (default: 1)')
     
     # Strategy-specific options
     parser.add_argument('--short-period', type=int, default=10,
@@ -212,12 +216,12 @@ Examples:
                        help='Days between portfolio rebalancing (default: 365)')
 
     # Stock list file option
-    parser.add_argument('--stock-list-file', type=str, default=testConfig.config.get("stock_list_file"),
-                       help=f'Path to JSON file containing list of stocks (default: uses {testConfig.config.get("stock_list_file")})')
-
+    parser.add_argument('--stock-list-file', type=str, default=testConfig.stock_list_file,
+                       help=f'Path to JSON file containing list of stocks (default: uses {testConfig.stock_list_file})')
+    
     # Trading options
-    parser.add_argument('--valuator', type=str, default=testConfig.config.get("valuator"),
-                       help=f'Stock valuator to use  (default: uses {testConfig.config.get("valuator")})')
+    parser.add_argument('--valuator', type=str, default=testConfig.valuator,
+                       help=f'Stock valuator to use  (default: uses {testConfig.valuator})')
 
     args = parser.parse_args()
     

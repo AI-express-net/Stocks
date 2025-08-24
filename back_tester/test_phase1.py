@@ -20,19 +20,22 @@ def test_config():
     
     # Test default config
     config = BackTesterConfig()
-    assert config.get('start_cash') == 0.0
-    assert config.get('add_amount') == 0.0
+    assert config.start_cash == 10000.0
+    assert config.add_amount == 0.0
+    assert config.add_amount_frequency_days == 30
     assert config.validate() == True
     print("✓ Configuration system working")
     
     # Test custom config
-    custom_config = BackTesterConfig({
-        'start_cash': 10000.0,
-        'add_amount': 1000.0,
-        'start_date': '2025-01-01',
-        'end_date': '2025-01-31'
-    })
-    assert custom_config.get('start_cash') == 10000.0
+    custom_config = BackTesterConfig(
+        start_cash=10000.0,
+        add_amount=1000.0,
+        add_amount_frequency_days=15,
+        start_date='2025-01-01',
+        end_date='2025-01-31'
+    )
+    assert custom_config.start_cash == 10000.0
+    assert custom_config.add_amount_frequency_days == 15
     assert custom_config.validate() == True
     print("✓ Custom configuration working")
 

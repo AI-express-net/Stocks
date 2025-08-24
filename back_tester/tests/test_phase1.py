@@ -21,21 +21,24 @@ class TestConfiguration:
     def test_default_config(self):
         """Test default configuration values."""
         config = BackTesterConfig()
-        assert config.get('start_cash') == 0.0
-        assert config.get('add_amount') == 0.0
-        assert config.get('start_date') == '1970-01-01'
+        assert config.start_cash == 10000.0
+        assert config.add_amount == 0.0
+        assert config.add_amount_frequency_days == 30
+        assert config.start_date == '1970-01-01'
         assert config.validate() == True
     
     def test_custom_config(self):
         """Test custom configuration."""
-        custom_config = BackTesterConfig({
-            'start_cash': 10000.0,
-            'add_amount': 1000.0,
-            'start_date': '2025-01-01',
-            'end_date': '2025-01-31'
-        })
-        assert custom_config.get('start_cash') == 10000.0
-        assert custom_config.get('add_amount') == 1000.0
+        custom_config = BackTesterConfig(
+            start_cash=10000.0,
+            add_amount=1000.0,
+            add_amount_frequency_days=15,
+            start_date='2025-01-01',
+            end_date='2025-01-31'
+        )
+        assert custom_config.start_cash == 10000.0
+        assert custom_config.add_amount == 1000.0
+        assert custom_config.add_amount_frequency_days == 15
         assert custom_config.validate() == True
     
     def test_config_validation(self):
@@ -44,7 +47,7 @@ class TestConfiguration:
         assert config.validate() == True
         
         # Test invalid date
-        invalid_config = BackTesterConfig({'start_date': 'invalid-date'})
+        invalid_config = BackTesterConfig(start_date='invalid-date')
         assert invalid_config.validate() == False
 
 
@@ -226,13 +229,13 @@ class TestIntegration:
     
     def test_component_creation(self):
         """Test that all components can be created."""
-        config = BackTesterConfig({
-            'start_cash': 10000.0,
-            'add_amount': 0.0,
-            'start_date': '2025-01-01',
-            'end_date': '2025-01-02',
-            'test_frequency_days': 1
-        })
+        config = BackTesterConfig(
+            start_cash=10000.0,
+            add_amount=0.0,
+            start_date='2025-01-01',
+            end_date='2025-01-02',
+            test_frequency_days=1
+        )
         
         valuator = ExampleValuator()
         strategy = BuyAndHoldStrategy(target_stocks=["AAPL", "GOOGL"])
