@@ -68,8 +68,8 @@ class BackTester:
             print(f"Portfolio value: ${self.portfolio.get_total_value():.2f}")
             
             try:
-                            # Add cash amount
-            add_amount = self.config.add_amount
+                # Add cash amount
+                add_amount = self.config.add_amount
                 if add_amount > 0:
                     self.portfolio.add_cash(add_amount)
                     print(f"Added ${add_amount:.2f} to portfolio")
@@ -106,8 +106,8 @@ class BackTester:
                 else:
                     print("No transactions generated")
                 
-                        # Save portfolio
-        self.portfolio.save_to_file(self.config.portfolio_file)
+                # Save portfolio
+                self.portfolio.save_to_file(self.config.portfolio_file)
                 
             except Exception as e:
                 print(f"Error on {date_str}: {e}")

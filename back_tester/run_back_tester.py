@@ -55,6 +55,10 @@ def create_config_from_args(args):
     if hasattr(args, 'stock_list_file') and args.stock_list_file:
         config_dict['stock_list_file'] = args.stock_list_file
     
+    # Add benchmark instrument if provided
+    if hasattr(args, 'benchmark') and args.benchmark:
+        config_dict['benchmark_instrument'] = args.benchmark
+    
     return BackTesterConfig(**config_dict)
 
 
@@ -99,6 +103,7 @@ def run_back_tester(args):
     print(f"  Date Range: {config.start_date} to {config.end_date}")
     print(f"  Test Frequency: {config.test_frequency_days} days")
     print(f"  Stock List File: {config.stock_list_file}")
+    print(f"  Benchmark: {config.benchmark_instrument}")
     
     if args.strategy.lower() == 'moving_average':
         print(f"  Moving Average: {args.short_period}/{args.long_period} days")
@@ -222,6 +227,8 @@ Examples:
     # Trading options
     parser.add_argument('--valuator', type=str, default=testConfig.valuator,
                        help=f'Stock valuator to use  (default: uses {testConfig.valuator})')
+    parser.add_argument('--benchmark', type=str, default=testConfig.benchmark_instrument,
+                       help=f'Benchmark instrument (default: {testConfig.benchmark_instrument})')
 
     args = parser.parse_args()
     

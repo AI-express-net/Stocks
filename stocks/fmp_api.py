@@ -109,9 +109,27 @@ class FmpApi:
 
     def get_stock_list(self, data_name):
         stock_list = self.get_market_data(data_name)
+        
+        # Handle error responses from API
+        if isinstance(stock_list, dict) and "Error Message" in stock_list:
+            logging.warning(f"API Error: {stock_list['Error Message']}")
+            return {"stocks": []}
+        
+        # Handle case where stock_list is not a list
+        if not isinstance(stock_list, list):
+            logging.error(f"Unexpected response format: {type(stock_list)}")
+            return {"stocks": []}
+        
         symbol_list = []
         for s in stock_list:
-            symbol_list.append(s["symbol"])
+            if isinstance(s, dict) and "symbol" in s:
+                symbol_list.append(s["symbol"])
+            elif isinstance(s, str):
+                # Handle case where API returns list of strings directly
+                symbol_list.append(s)
+            else:
+                logging.warning(f"Skipping invalid stock item: {s}")
+        
         stocks = {"stocks": symbol_list}
         return stocks
 

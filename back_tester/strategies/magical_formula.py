@@ -25,6 +25,35 @@ class MagicalFormulaStrategy(Strategy):
     2. Ranks stocks by return on capital (EBIT/(Net Fixed Assets + Working Capital))
     3. Combines rankings and invests in top 20-30 companies
     4. Rebalances annually
+    
+    ===== BUY/SELL CRITERIA =====
+    
+    BUY DECISIONS:
+    - Stock ranks in top 25 stocks (default portfolio_size) based on combined ranking score
+    - Combined ranking = (Earnings Yield × 0.6) + (Return on Capital × 0.4)
+    - Stock meets minimum market cap requirements (default $50M)
+    - Stock is not excluded (utilities, financials, ADRs excluded by default)
+    - Sufficient cash available to purchase at least 1 share
+    - Position size would not exceed max_position_size (default 5% of portfolio)
+    - Portfolio has fewer than portfolio_size positions OR it's rebalancing time
+    
+    SELL DECISIONS:
+    - Annual rebalancing occurs (default every 365 days)
+    - ALL positions are sold during rebalancing, regardless of individual performance
+    - No individual stock sell signals - only systematic rebalancing
+    
+    HOLDING CRITERIA:
+    - Stocks are held for exactly one year (365 days) until next rebalancing
+    - No individual position adjustments during the holding period
+    - Portfolio composition remains fixed between rebalancing dates
+    - New positions may be added monthly if portfolio is below target size
+    
+    ===== STRATEGY LOGIC =====
+    This is a systematic value investing strategy based on Joel Greenblatt's methodology.
+    It focuses on companies with high earnings yield (cheap) and high return on capital
+    (good businesses). The strategy assumes that buying good businesses at cheap prices
+    will outperform the market over time. Annual rebalancing ensures the portfolio
+    stays focused on the current best opportunities.
     """
     
     def __init__(self, 

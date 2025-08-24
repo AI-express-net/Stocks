@@ -12,6 +12,7 @@ class TransactionType(Enum):
     """Transaction types."""
     BUY = "buy"
     SELL = "sell"
+    CASH = "cash"  # For cash additions and dividend payments
 
 
 @dataclass
@@ -24,6 +25,7 @@ class Transaction:
     shares: int
     transaction_type: TransactionType
     transaction_id: str = field(default_factory=lambda: None)
+    description: str = field(default="")
     
     def __post_init__(self):
         """Validate transaction data after initialization."""
@@ -39,8 +41,13 @@ class Transaction:
         if self.price <= 0:
             raise ValueError("Price must be positive")
         
-        if self.shares <= 0:
-            raise ValueError("Shares must be positive")
+        # For CASH transactions, shares should be 1 and price is the cash amount
+        if self.transaction_type == TransactionType.CASH:
+            if self.shares != 1:
+                raise ValueError("CASH transactions must have shares = 1")
+        else:
+            if self.shares <= 0:
+                raise ValueError("Shares must be positive")
         
         try:
             from datetime import date as date_type
@@ -74,7 +81,8 @@ class Transaction:
             'shares': self.shares,
             'type': self.transaction_type.value,
             'transaction_id': self.transaction_id,
-            'total_value': self.get_total_value()
+            'total_value': self.get_total_value(),
+            'description': self.description
         }
     
     @classmethod
@@ -86,12 +94,16 @@ class Transaction:
             price=data['price'],
             shares=data['shares'],
             transaction_type=TransactionType(data['type']),
-            transaction_id=data.get('transaction_id')
+            transaction_id=data.get('transaction_id'),
+            description=data.get('description', '')
         )
     
     def __str__(self) -> str:
         """String representation of transaction."""
-        return f"{self.transaction_type.value.upper()} {self.shares} shares of {self.stock} at ${self.price:.2f} on {self.date}"
+        if self.transaction_type == TransactionType.CASH:
+            return f"CASH {self.description}: ${self.price:.2f} on {self.date}"
+        else:
+            return f"{self.transaction_type.value.upper()} {self.shares} shares of {self.stock} at ${self.price:.2f} on {self.date}"
     
     def __repr__(self) -> str:
         """Detailed string representation."""

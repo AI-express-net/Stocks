@@ -16,6 +16,9 @@ I want to build a stock back tester. The basic process is as follows:
 - The last step in the main loop is to adjust the 'processed' date. The processed date starts with the start-date and then increments with the test frequency, which is defined by a number of days. Once the processed date has been updated and the processed dat eis not after the end-date, then do the main loop again.
 - All test code needs to in a 'tests' sub-directory and need to use the pytest framework.
 - When the application runs again, delete the files saved with the portfolio, the results and the transactions.
-- While the back-tester is running, there's a benchmark buy-and-hold strategy that is called to benchmark the performance of the back-tester. For each transaction for the portfolio, a transaction for the same dollar amount is made for the instrument of the back-tester. The default instrument of the benchmark is the SP500 index.
+- While the back-tester is running, there's a benchmark buy-and-hold strategy that is called to benchmark the performance of the back-tester. For each transaction for the portfolio, a transaction for the same dollar amount is made for the instrument of the benchmark. The default instrument of the benchmark is the SP500 index.
+- The benchmark strategy needs to start with the same starting cash and periodic cash added as the strategy under test.
+- After each period, if there were any transactions, print the portfolio value and returns and the benchmark value and return.
+- Create the same files containing the portfolio, the results and the transactions for the benchmark.
 - At the end, a graph is created that compares the performance of the back-tester and the benchmark.
 - When a stock in the portfolio passes an ex-dividend date, the portfolio gets added cash equals to the dividend amount times the number of shares held.

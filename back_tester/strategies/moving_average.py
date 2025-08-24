@@ -13,6 +13,32 @@ class MovingAverageStrategy(Strategy):
     
     This strategy uses moving averages to generate buy/sell signals.
     It's a simplified implementation for demonstration purposes.
+    
+    ===== BUY/SELL CRITERIA =====
+    
+    BUY DECISIONS:
+    - Stock is not currently in the portfolio
+    - Short-term moving average (default 10 days) > Long-term moving average (default 30 days)
+    - Current price > Short-term moving average
+    - Sufficient cash available to purchase at least 1 share
+    - Position size would not exceed max_position_size (default 20% of portfolio)
+    
+    SELL DECISIONS:
+    - Stock is currently in the portfolio with shares > 0
+    - Short-term moving average (default 10 days) < Long-term moving average (default 30 days)
+    - Current price < Short-term moving average
+    - Sells entire position (all shares) when sell signal is triggered
+    
+    HOLDING CRITERIA:
+    - Stock is held as long as moving average conditions remain favorable
+    - No partial position adjustments - either full position or no position
+    - Positions are monitored daily for crossover signals
+    
+    ===== STRATEGY LOGIC =====
+    This is a trend-following strategy that uses price momentum to identify entry and exit points.
+    The strategy assumes that when short-term trends align with long-term trends and current
+    price confirms the trend, it's a good time to buy. Conversely, when trends diverge and
+    price falls below the short-term average, it's time to sell.
     """
     
     def __init__(self, short_period: int = 10, long_period: int = 30, 

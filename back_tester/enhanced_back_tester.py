@@ -10,9 +10,7 @@ import os
 import json
 import logging
 from datetime import date, datetime, timedelta
-from typing import List, Dict, Optional, Tuple
-
-from models.transaction import TransactionType
+from typing import List, Dict, Optional, Tuple, Any
 
 # Add the parent directory to the path to import from stocks
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -21,7 +19,12 @@ from config import BackTesterConfig
 from enhanced_portfolio import EnhancedPortfolio, PerformanceSnapshot
 from real_valuator import RealValuator
 from strategy import Strategy
-from models.transaction import Transaction
+from models.transaction import Transaction, TransactionType
+from performance_tracker import PerformanceTracker
+from models.benchmark_portfolio import BenchmarkPortfolio
+from performance_graph import PerformanceGraph
+from strategies.benchmark_strategy import BenchmarkStrategy
+from dividend_handler import DividendHandler
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -65,6 +68,17 @@ class EnhancedBackTester:
         # Performance tracking
         self.performance_snapshots: List[PerformanceSnapshot] = []
         self.transaction_log: List[Transaction] = []
+        
+        # Benchmark tracking
+        self.performance_tracker = PerformanceTracker()
+        self.benchmark_portfolio = BenchmarkPortfolio(
+            instrument=config.benchmark_instrument
+        )
+        self.benchmark_portfolio.initialize_with_cash(config.start_cash)  # Start with same cash
+        self.performance_graph = PerformanceGraph()
+        
+        # Dividend handling
+        self.dividend_handler = DividendHandler(config.dividend_file)
         
         # Load stock list
         self.stock_list = self._load_stock_list()
@@ -111,8 +125,27 @@ class EnhancedBackTester:
                     days_since_last_addition = (self.current_date - self.last_cash_addition_date).days
                     if days_since_last_addition >= self.add_amount_frequency_days:
                         self.portfolio.add_cash(self.add_amount)
+                        self.benchmark_portfolio.add_cash(self.add_amount)  # Mirror cash addition
                         self.last_cash_addition_date = self.current_date
-                        logger.info(f"Added ${self.add_amount} to portfolio on {self.current_date}")
+                        logger.info(f"Added ${self.add_amount} to portfolio and benchmark on {self.current_date}")
+                        
+                        # Log periodic cash addition as transaction
+                        cash_transaction = self._create_cash_transaction(
+                            self.add_amount, self.current_date, "Periodic cash addition"
+                        )
+                        self.transaction_log.append(cash_transaction)
+                
+                # Check for dividends and add to portfolio
+                dividend_amount = self.dividend_handler.check_dividends(self.current_date, self.portfolio)
+                if dividend_amount > 0:
+                    self.dividend_handler.add_dividend_cash(self.portfolio, dividend_amount)
+                    logger.info(f"Added ${dividend_amount:.2f} in dividends to portfolio on {self.current_date}")
+                    
+                    # Log dividend payment as transaction
+                    dividend_transaction = self._create_cash_transaction(
+                        dividend_amount, self.current_date, "Dividend payment"
+                    )
+                    self.transaction_log.append(dividend_transaction)
                 
                 # Get current stock values
                 stock_values = self.valuator.calculate_values(self.stock_list, self.current_date)
@@ -142,7 +175,7 @@ class EnhancedBackTester:
                         self.transaction_log.append(transaction)
                     else:
                         failed_transactions += 1
-                        logger.warning(f"Failed to execute sell transaction: {transaction}")
+                        logger.debug(f"Failed to execute sell transaction: {transaction}")
                 
                 # Execute buy transactions
                 for transaction in buy_transactions:
@@ -151,11 +184,25 @@ class EnhancedBackTester:
                         self.transaction_log.append(transaction)
                     else:
                         failed_transactions += 1
-                        logger.warning(f"Failed to execute buy transaction: {transaction}")
+                        logger.debug(f"Failed to execute buy transaction: {transaction}")
                 
                 # Take performance snapshot
                 snapshot = self.portfolio.take_performance_snapshot(self.current_date)
                 self.performance_snapshots.append(snapshot)
+                
+                # Update benchmark portfolio - mirror transactions
+                self._update_benchmark_portfolio(transactions, self.current_date)
+                
+                # Record performance for comparison
+                main_value = self.portfolio.get_total_value()
+                benchmark_value = self.benchmark_portfolio.get_current_value()
+                self.performance_tracker.record_performance(self.current_date, main_value, benchmark_value)
+                
+                # Print period reporting if there were transactions
+                if transactions:
+                    main_return = main_value - self.config.start_cash
+                    benchmark_return = benchmark_value - self.config.start_cash
+                    print(f"Date: {self.current_date} - Main: ${main_value:.2f} (${main_return:+.2f}) | Benchmark: ${benchmark_value:.2f} (${benchmark_return:+.2f})")
                 
                 # Save portfolio periodically
                 if iteration_count % 10 == 0:
@@ -173,6 +220,9 @@ class EnhancedBackTester:
         # Final save
         self.portfolio.save_to_file()
         self._save_transactions()
+        
+        # Generate performance graphs
+        self._generate_performance_graphs()
         
         # Generate results
         results = self._generate_results(successful_transactions, failed_transactions)
@@ -348,11 +398,13 @@ class EnhancedBackTester:
             
             # Count actual transactions
             successful = len([t for t in self.transaction_log if t.transaction_type.value in ["BUY", "SELL"]])
+            cash_transactions = len([t for t in self.transaction_log if t.transaction_type.value == "CASH"])
             failed = 0  # Failed transactions are logged but not stored in transaction_log
             
             results["trading_metrics"]["successful_transactions"] = successful
+            results["trading_metrics"]["cash_transactions"] = cash_transactions
             results["trading_metrics"]["failed_transactions"] = failed
-            results["trading_metrics"]["total_transactions"] = successful + failed
+            results["trading_metrics"]["total_transactions"] = successful + cash_transactions + failed
             
             with open(filename, 'w') as f:
                 json.dump(results, f, indent=2, default=str)
@@ -396,4 +448,116 @@ class EnhancedBackTester:
         self.transaction_log.clear()
         self.valuator.clear_cache()
         
-        logger.info("Back tester reset to initial state") 
+        logger.info("Back tester reset to initial state")
+    
+    def _update_benchmark_portfolio(self, transactions: List[Transaction], date: datetime) -> None:
+        """Update benchmark portfolio by mirroring main portfolio transactions."""
+        # Create benchmark strategy to generate mirror transactions
+        benchmark_strategy = BenchmarkStrategy(self.config.benchmark_instrument)
+        
+        # Generate mirror transactions for the same dollar amounts
+        benchmark_transactions = benchmark_strategy.mirror_transactions(transactions, date)
+        
+        # Execute benchmark transactions
+        for transaction in benchmark_transactions:
+            try:
+                self.benchmark_portfolio.execute_transaction(transaction)
+            except ValueError as e:
+                logger.debug(f"Failed to execute benchmark transaction: {e}")
+        
+        # Update SP500 price (simplified - in real implementation would fetch actual SP500 data)
+        # For now, use a simple growth model
+        sp500_growth_rate = 0.0001  # 0.01% daily growth (simplified)
+        current_sp500_price = self.benchmark_portfolio.sp500_price
+        new_sp500_price = current_sp500_price * (1 + sp500_growth_rate)
+        self.benchmark_portfolio.update_sp500_price(new_sp500_price)
+        
+        # Record performance snapshot
+        self.benchmark_portfolio.record_performance(date)
+    
+    def _generate_performance_graphs(self) -> None:
+        """Generate performance comparison graphs."""
+        try:
+            # Get performance data
+            performance_data = self.performance_tracker.get_performance_data()
+            
+            if not performance_data['dates']:
+                logger.warning("No performance data available for graphing")
+                return
+            
+            # Create graphs
+            output_prefix = f"{self.config.strategy}_performance"
+            self.performance_graph.create_all_graphs(performance_data, output_prefix)
+            
+            # Save performance data
+            performance_file = f"{self.config.strategy}_performance_data.json"
+            self.performance_tracker.save_performance_data(performance_file)
+            
+            # Save benchmark files
+            benchmark_portfolio_file = f"{self.config.strategy}_benchmark_portfolio.json"
+            benchmark_results_file = f"{self.config.strategy}_benchmark_results.json"
+            benchmark_transactions_file = f"{self.config.strategy}_benchmark_transactions.json"
+            
+            self.benchmark_portfolio.save_to_file(benchmark_portfolio_file)
+            
+            # Save benchmark results
+            benchmark_results = {
+                'benchmark_info': {
+                    'instrument': self.config.benchmark_instrument,
+                    'start_date': self.config.start_date,
+                    'end_date': self.config.end_date,
+                    'initial_cash': self.config.start_cash,
+                    'add_amount': self.config.add_amount,
+                    'add_frequency_days': self.config.add_amount_frequency_days
+                },
+                'performance': self.benchmark_portfolio.get_performance_summary(),
+                'transactions': [t.to_dict() for t in self.benchmark_portfolio.transactions]
+            }
+            
+            with open(benchmark_results_file, 'w') as f:
+                json.dump(benchmark_results, f, indent=2, default=str)
+            
+            # Save benchmark transactions
+            with open(benchmark_transactions_file, 'w') as f:
+                json.dump([t.to_dict() for t in self.benchmark_portfolio.transactions], f, indent=2, default=str)
+            
+            logger.info("Performance graphs and data generated successfully")
+            
+        except Exception as e:
+            logger.error(f"Error generating performance graphs: {str(e)}")
+    
+    def get_benchmark_comparison(self) -> Dict[str, Any]:
+        """Get benchmark comparison summary."""
+        performance_summary = self.performance_tracker.get_performance_summary()
+        benchmark_summary = self.benchmark_portfolio.get_performance_summary()
+        
+        return {
+            'main_strategy': performance_summary,
+            'benchmark': benchmark_summary,
+            'comparison': {
+                'outperformed_benchmark': performance_summary.get('outperformed_benchmark', False),
+                'excess_return': performance_summary.get('excess_return', 0.0),
+                'excess_return_percentage': performance_summary.get('excess_return_percentage', 0.0)
+            }
+        }
+    
+    def _create_cash_transaction(self, amount: float, date: date, description: str) -> Transaction:
+        """
+        Create a cash transaction for logging.
+        
+        Args:
+            amount: Cash amount to add
+            date: Transaction date
+            description: Description of the cash transaction
+            
+        Returns:
+            Transaction object representing the cash transaction
+        """
+        return Transaction(
+            stock="CASH",
+            date=date.strftime('%Y-%m-%d'),
+            price=amount,
+            shares=1,
+            transaction_type=TransactionType.CASH,
+            description=description
+        ) 

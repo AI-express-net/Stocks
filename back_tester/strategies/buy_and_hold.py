@@ -13,6 +13,27 @@ class BuyAndHoldStrategy(Strategy):
     
     This strategy buys stocks when they are not in the portfolio and holds them.
     It does not sell existing positions.
+    
+    ===== BUY/SELL CRITERIA =====
+    
+    BUY DECISIONS:
+    - Stock is not currently in the portfolio
+    - Stock is in the target_stocks list (if specified) or any available stock
+    - Sufficient cash available to purchase at least 1 share
+    - Position size would not exceed max_position_size (default 10% of portfolio)
+    
+    SELL DECISIONS:
+    - NONE - This strategy never sells existing positions
+    
+    HOLDING CRITERIA:
+    - Once a stock is purchased, it is held indefinitely
+    - No rebalancing or position adjustment occurs
+    - Portfolio grows through new purchases only, not by selling existing positions
+    
+    ===== STRATEGY LOGIC =====
+    This is a passive investment strategy that assumes stocks will appreciate over time.
+    It's designed for long-term investors who believe in the overall growth of the market
+    and don't want to actively trade or time the market.
     """
     
     def __init__(self, target_stocks: List[str] = None, max_position_size: float = 0.1):
