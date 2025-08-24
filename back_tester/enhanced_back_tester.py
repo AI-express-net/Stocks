@@ -17,10 +17,12 @@ from back_tester.real_valuator import RealValuator
 from back_tester.strategy import Strategy
 from back_tester.models.transaction import Transaction, TransactionType
 from back_tester.performance_tracker import PerformanceTracker
-from back_tester.models.benchmark_portfolio import BenchmarkPortfolio
+
 from back_tester.performance_graph import PerformanceGraph
-from back_tester.strategies.benchmark_strategy import BenchmarkStrategy
+from back_tester.strategies.sp500_buy_and_hold import SP500BuyAndHoldStrategy
 from back_tester.dividend_handler import DividendHandler
+
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -67,19 +69,55 @@ class EnhancedBackTester:
         
         # Benchmark tracking
         self.performance_tracker = PerformanceTracker()
-        self.benchmark_portfolio = BenchmarkPortfolio(
-            instrument=config.benchmark_instrument
-        )
-        self.benchmark_portfolio.initialize_with_cash(config.start_cash)  # Start with same cash
+        self.benchmark_portfolio = EnhancedPortfolio(
+            initial_cash=config.start_cash,
+            portfolio_file=config.portfolio_file.replace('.json', '_benchmark.json')
+        )  # Use regular portfolio for benchmark
+        self.benchmark_strategy = SP500BuyAndHoldStrategy(max_position_size=1.0)  # 100% allocation to SP500
         self.performance_graph = PerformanceGraph()
         
         # Dividend handling
         self.dividend_handler = DividendHandler(config.dividend_file)
         
-        # Load stock list
+        # Load stock list - both main strategy and benchmark use the same stock list
         self.stock_list = self._load_stock_list()
         
         logger.info(f"Enhanced back tester initialized with {len(self.stock_list)} stocks")
+    
+    def _clear_previous_results(self) -> None:
+        """Clear previous result files at the start of each run."""
+        import os
+        import glob
+        
+        try:
+            # Clear results directory
+            results_dir = "back_tester/results"
+            if os.path.exists(results_dir):
+                # Remove all JSON files in results directory
+                json_files = glob.glob(os.path.join(results_dir, "*.json"))
+                for json_file in json_files:
+                    try:
+                        os.remove(json_file)
+                        logger.debug(f"Removed previous result file: {json_file}")
+                    except Exception as e:
+                        logger.warning(f"Could not remove {json_file}: {e}")
+                
+                # Remove all PNG files in results directory
+                png_files = glob.glob(os.path.join(results_dir, "*.png"))
+                for png_file in png_files:
+                    try:
+                        os.remove(png_file)
+                        logger.debug(f"Removed previous result file: {png_file}")
+                    except Exception as e:
+                        logger.warning(f"Could not remove {png_file}: {e}")
+                
+                logger.info(f"Cleared {len(json_files)} JSON files and {len(png_files)} PNG files from previous run")
+            else:
+                logger.info("Results directory does not exist, creating it")
+                os.makedirs(results_dir, exist_ok=True)
+                
+        except Exception as e:
+            logger.warning(f"Error clearing previous results: {e}")
     
     def set_strategy(self, strategy: Strategy) -> None:
         """
@@ -100,6 +138,13 @@ class EnhancedBackTester:
         """
         if self.strategy is None:
             raise ValueError("Strategy must be set before running back test")
+        
+        # Clear previous results at the start of each run
+        self._clear_previous_results()
+        
+        # Reset portfolio objects to clear any old data
+        self.portfolio.reset_portfolio(self.config.start_cash)
+        self.benchmark_portfolio.reset_portfolio(self.config.start_cash)
         
         logger.info(f"Starting enhanced back test from {self.current_date} to {self.end_date}")
         
@@ -151,8 +196,17 @@ class EnhancedBackTester:
                     self._advance_date()
                     continue
                 
+                # Debug: Log stock values
+                logger.debug(f"Stock values for {self.current_date}: {stock_values}")
+                
+                # Store stock values for benchmark access
+                self.stock_values = stock_values
+                
                 # Update portfolio with current values
                 self.portfolio.update_portfolio_values(stock_values)
+                
+                # Debug: Log portfolio values after update
+                logger.debug(f"Portfolio after update - Cash: ${self.portfolio.get_cash_balance():.2f}, Stock Value: ${self.portfolio.get_stock_value():.2f}, Total: ${self.portfolio.get_total_value():.2f}")
                 
                 # Generate transactions from strategy
                 portfolio_items = list(self.portfolio.get_portfolio_items().values())
@@ -186,19 +240,22 @@ class EnhancedBackTester:
                 snapshot = self.portfolio.take_performance_snapshot(self.current_date)
                 self.performance_snapshots.append(snapshot)
                 
-                # Update benchmark portfolio - mirror transactions
-                self._update_benchmark_portfolio(transactions, self.current_date)
+                # Update benchmark portfolio using SP500 buy-and-hold strategy
+                self._update_benchmark_portfolio(self.current_date)
                 
                 # Record performance for comparison
                 main_value = self.portfolio.get_total_value()
-                benchmark_value = self.benchmark_portfolio.get_current_value()
+                benchmark_value = self.benchmark_portfolio.get_total_value()  # Use same method as main portfolio
+                
+                # Debug: Log both portfolio values
+                logger.debug(f"Main portfolio: ${main_value:.2f}, Benchmark portfolio: ${benchmark_value:.2f}")
+                
                 self.performance_tracker.record_performance(self.current_date, main_value, benchmark_value)
                 
-                # Print period reporting if there were transactions
-                if transactions:
-                    main_return = main_value - self.config.start_cash
-                    benchmark_return = benchmark_value - self.config.start_cash
-                    print(f"Date: {self.current_date} - Main: ${main_value:.2f} (${main_return:+.2f}) | Benchmark: ${benchmark_value:.2f} (${benchmark_return:+.2f})")
+                # Print period reporting - show both main and benchmark values every day
+                main_return = main_value - self.config.start_cash
+                benchmark_return = benchmark_value - self.config.start_cash
+                print(f"Date: {self.current_date} - Main: ${main_value:.2f} (${main_return:+.2f}) | Benchmark: ${benchmark_value:.2f} (${benchmark_return:+.2f})")
                 
                 # Save portfolio periodically
                 if iteration_count % 10 == 0:
@@ -250,6 +307,8 @@ class EnhancedBackTester:
         except Exception as e:
             logger.error(f"Error loading stock list: {str(e)}")
             return []
+    
+
     
     def _save_transactions(self) -> None:
         """Save transaction log to file."""
@@ -452,34 +511,67 @@ class EnhancedBackTester:
         
         logger.info("Back tester reset to initial state")
     
-    def _update_benchmark_portfolio(self, transactions: List[Transaction], date: datetime) -> None:
-        """Update benchmark portfolio by mirroring main portfolio transactions."""
-        # Create benchmark strategy to generate mirror transactions
-        benchmark_strategy = BenchmarkStrategy(self.config.benchmark_instrument)
+    def _update_benchmark_portfolio(self, date: datetime) -> None:
+        """Update benchmark portfolio using SP500 buy-and-hold strategy."""
+        # Get current portfolio items and stock values for benchmark
+        benchmark_portfolio_items = self.benchmark_portfolio.get_portfolio_items()
+        available_cash = self.benchmark_portfolio.get_cash_balance()
         
-        # Generate mirror transactions for the same dollar amounts
-        benchmark_transactions = benchmark_strategy.mirror_transactions(transactions, date)
+        # Debug: Log benchmark update details
+        logger.debug(f"Benchmark update - Date: {date}, Cash: ${available_cash:.2f}, Stock values: {self.stock_values}")
         
-        # Execute benchmark transactions
-        for transaction in benchmark_transactions:
+        # Generate benchmark transactions using SP500 buy-and-hold strategy
+        # Pass the same stock values list as the main strategy
+        benchmark_transactions = self.benchmark_strategy.generate_transactions(
+            benchmark_portfolio_items, 
+            self.stock_values,  # Use same stock values list as main strategy
+            date, 
+            available_cash
+        )
+        
+        # Debug: Log benchmark transactions
+        logger.debug(f"Benchmark generated {len(benchmark_transactions)} transactions: {benchmark_transactions}")
+        
+        # Execute benchmark transactions (sell first, then buy)
+        sell_transactions = [t for t in benchmark_transactions if t.transaction_type == TransactionType.SELL]
+        buy_transactions = [t for t in benchmark_transactions if t.transaction_type == TransactionType.BUY]
+        
+        # Execute sell transactions first
+        for transaction in sell_transactions:
             try:
-                self.benchmark_portfolio.execute_transaction(transaction)
+                if self.benchmark_portfolio.execute_transaction(transaction):
+                    logger.debug(f"Executed benchmark sell: {transaction.shares} shares of {transaction.stock} at ${transaction.price}")
+                else:
+                    logger.debug(f"Failed to execute benchmark sell transaction: {transaction}")
             except ValueError as e:
-                logger.debug(f"Failed to execute benchmark transaction: {e}")
+                logger.debug(f"Failed to execute benchmark sell transaction: {e}")
         
-        # Update SP500 price (simplified - in real implementation would fetch actual SP500 data)
-        # For now, use a simple growth model
-        sp500_growth_rate = 0.0001  # 0.01% daily growth (simplified)
-        current_sp500_price = self.benchmark_portfolio.sp500_price
-        new_sp500_price = current_sp500_price * (1 + sp500_growth_rate)
-        self.benchmark_portfolio.update_sp500_price(new_sp500_price)
+        # Execute buy transactions
+        for transaction in buy_transactions:
+            try:
+                if self.benchmark_portfolio.execute_transaction(transaction):
+                    logger.debug(f"Executed benchmark buy: {transaction.shares} shares of {transaction.stock} at ${transaction.price}")
+                else:
+                    logger.debug(f"Failed to execute benchmark buy transaction: {transaction}")
+            except ValueError as e:
+                logger.debug(f"Failed to execute benchmark buy transaction: {e}")
         
-        # Record performance snapshot
-        self.benchmark_portfolio.record_performance(date)
+        # Update benchmark portfolio with current stock values (this was missing!)
+        self.benchmark_portfolio.update_portfolio_values(self.stock_values)
+        
+        # Take performance snapshot for benchmark
+        benchmark_snapshot = self.benchmark_portfolio.take_performance_snapshot(date)
+        self.benchmark_portfolio.performance_history.append(benchmark_snapshot)
     
     def _generate_performance_graphs(self) -> None:
         """Generate performance comparison graphs."""
         try:
+            # Ensure results directory exists
+            results_dir = "back_tester/results"
+            if not os.path.exists(results_dir):
+                os.makedirs(results_dir)
+                logger.info(f"Created results directory: {results_dir}")
+            
             # Get performance data
             performance_data = self.performance_tracker.get_performance_data()
             
@@ -488,24 +580,24 @@ class EnhancedBackTester:
                 return
             
             # Create graphs
-            output_prefix = f"{self.config.strategy}_performance"
+            output_prefix = f"back_tester/results/{self.config.strategy}_performance"
             self.performance_graph.create_all_graphs(performance_data, output_prefix)
             
             # Save performance data
-            performance_file = f"{self.config.strategy}_performance_data.json"
+            performance_file = f"back_tester/results/{self.config.strategy}_performance_data.json"
             self.performance_tracker.save_performance_data(performance_file)
             
             # Save benchmark files
-            benchmark_portfolio_file = f"{self.config.strategy}_benchmark_portfolio.json"
-            benchmark_results_file = f"{self.config.strategy}_benchmark_results.json"
-            benchmark_transactions_file = f"{self.config.strategy}_benchmark_transactions.json"
+            benchmark_portfolio_file = f"back_tester/results/{self.config.strategy}_benchmark_portfolio.json"
+            benchmark_results_file = f"back_tester/results/{self.config.strategy}_benchmark_results.json"
+            benchmark_transactions_file = f"back_tester/results/{self.config.strategy}_benchmark_transactions.json"
             
             self.benchmark_portfolio.save_to_file(benchmark_portfolio_file)
             
             # Save benchmark results
             benchmark_results = {
                 'benchmark_info': {
-                    'instrument': self.config.benchmark_instrument,
+                    'strategy': 'SP500_Buy_And_Hold',
                     'start_date': self.config.start_date,
                     'end_date': self.config.end_date,
                     'initial_cash': self.config.start_cash,
@@ -513,7 +605,7 @@ class EnhancedBackTester:
                     'add_frequency_days': self.config.add_amount_frequency_days
                 },
                 'performance': self.benchmark_portfolio.get_performance_summary(),
-                'transactions': [t.to_dict() for t in self.benchmark_portfolio.transactions]
+                'transactions': [t.to_dict() for t in self.benchmark_portfolio.transaction_history]
             }
             
             with open(benchmark_results_file, 'w') as f:
@@ -521,7 +613,7 @@ class EnhancedBackTester:
             
             # Save benchmark transactions
             with open(benchmark_transactions_file, 'w') as f:
-                json.dump([t.to_dict() for t in self.benchmark_portfolio.transactions], f, indent=2, default=str)
+                json.dump([t.to_dict() for t in self.benchmark_portfolio.transaction_history], f, indent=2, default=str)
             
             logger.info("Performance graphs and data generated successfully")
             

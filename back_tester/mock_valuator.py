@@ -9,7 +9,7 @@ import logging
 from datetime import date, datetime
 from typing import List, Tuple, Optional
 
-from valuator import Valuator
+from back_tester.valuator import Valuator
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

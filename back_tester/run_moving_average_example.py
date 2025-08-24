@@ -23,8 +23,8 @@ def run_moving_average_example():
         'start_date': '2023-01-01',
         'end_date': '2023-12-31',
         'test_frequency_days': 7,  # Weekly testing
-        'portfolio_file': 'results/moving_average_portfolio.json',
-        'transactions_file': 'results/moving_average_transactions.json'
+        'portfolio_file': 'back_tester/results/moving_average_portfolio.json',
+        'transactions_file': 'back_tester/results/moving_average_transactions.json'
     })
     
     print(f"Configuration:")
@@ -64,8 +64,8 @@ def run_moving_average_example():
     print(f"Successful Transactions: {results['trading_metrics']['successful_transactions']}")
     
     # Export results
-    back_tester.export_results('results/moving_average_results.json')
-    print(f"\nResults exported to: results/moving_average_results.json")
+    back_tester.export_results('back_tester/results/moving_average_results.json')
+    print(f"\nResults exported to: back_tester/results/moving_average_results.json")
     
     return results
 
@@ -82,8 +82,8 @@ def run_with_real_data():
         'start_date': '2024-01-01',
         'end_date': '2024-06-30',
         'test_frequency_days': 7,
-        'portfolio_file': 'results/real_moving_average_portfolio.json',
-        'transactions_file': 'results/real_moving_average_transactions.json'
+        'portfolio_file': 'back_tester/results/real_moving_average_portfolio.json',
+        'transactions_file': 'back_tester/results/real_moving_average_transactions.json'
     })
     
     # Import real valuator (requires API key setup)

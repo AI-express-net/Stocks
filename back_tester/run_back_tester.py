@@ -19,9 +19,16 @@ def _cleanup_saved_files(strategy_name):
     import os
     
     files_to_delete = [
-        f"{strategy_name}_portfolio.json",
-        f"{strategy_name}_transactions.json", 
-        f"{strategy_name}_results.json"
+        f"back_tester/results/{strategy_name}_portfolio.json",
+        f"back_tester/results/{strategy_name}_transactions.json", 
+        f"back_tester/results/{strategy_name}_results.json",
+        f"back_tester/results/{strategy_name}_performance_comparison.png",
+        f"back_tester/results/{strategy_name}_performance_returns.png",
+        f"back_tester/results/{strategy_name}_performance_drawdown.png",
+        f"back_tester/results/{strategy_name}_performance_data.json",
+        f"back_tester/results/{strategy_name}_benchmark_portfolio.json",
+        f"back_tester/results/{strategy_name}_benchmark_results.json",
+        f"back_tester/results/{strategy_name}_benchmark_transactions.json"
     ]
     
     for file_path in files_to_delete:
@@ -42,8 +49,8 @@ def create_config_from_args(args):
         'start_date': args.start_date,
         'end_date': args.end_date,
         'test_frequency_days': args.frequency,
-        'portfolio_file': f"results/{args.strategy}_portfolio.json",
-        'transactions_file': f"results/{args.strategy}_transactions.json"
+        'portfolio_file': f"back_tester/results/{args.strategy}_portfolio.json",
+        'transactions_file': f"back_tester/results/{args.strategy}_transactions.json"
     }
     
     # Add stock list file if provided
@@ -149,7 +156,7 @@ def run_back_tester(args):
     print(f"Success Rate: {results['trading_metrics']['success_rate']:.1f}%")
     
     # Export results
-    results_file = f"results/{args.strategy}_results.json"
+    results_file = f"back_tester/results/{args.strategy}_results.json"
     back_tester.export_results(results_file)
     print(f"\nResults exported to: {results_file}")
     
@@ -198,8 +205,8 @@ Examples:
                        help=f'Days between cash additions (default: {testConfig.add_amount_frequency_days})')
     parser.add_argument('--start-date', default='2023-01-01',
                        help='Start date (YYYY-MM-DD, default: 2023-01-01)')
-    parser.add_argument('--end-date', default='2023-12-31',
-                       help='End date (YYYY-MM-DD, default: 2023-12-31)')
+    parser.add_argument('--end-date', default='2023-03-31',
+                       help='End date (YYYY-MM-DD, default: 2023-03-31)')
     parser.add_argument('--frequency', type=int, default=1,
                        help='Test frequency in days (default: 1)')
     

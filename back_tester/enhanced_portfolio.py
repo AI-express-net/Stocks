@@ -86,6 +86,7 @@ class EnhancedPortfolio:
             initial_cash: Initial cash balance
             portfolio_file: File to save portfolio data
         """
+        self.initial_cash = initial_cash
         self.cash_balance = initial_cash
         self.portfolio_items: Dict[str, PortfolioItem] = {}
         self.portfolio_file = portfolio_file
@@ -237,10 +238,17 @@ class EnhancedPortfolio:
         """
         stock_value_dict = dict(stock_values)
         
+        logger.debug(f"Portfolio items: {list(self.portfolio_items.keys())}")
+        logger.debug(f"Stock values: {stock_values}")
+        
         for stock_name, item in self.portfolio_items.items():
             if stock_name in stock_value_dict:
                 current_price = stock_value_dict[stock_name]
+                old_value = item.current_value
                 item.update_current_value(current_price)
+                logger.debug(f"Updated {stock_name}: {item.shares} shares at ${current_price:.2f} = ${item.current_value:.2f} (was ${old_value:.2f})")
+            else:
+                logger.debug(f"No price found for {stock_name}")
         
         logger.debug(f"Updated portfolio values for {len(stock_values)} stocks")
     
@@ -252,6 +260,14 @@ class EnhancedPortfolio:
     def get_stock_value(self) -> float:
         """Calculate total stock value."""
         return sum(item.current_value for item in self.portfolio_items.values())
+    
+    def reset_portfolio(self, start_cash: float) -> None:
+        """Reset portfolio to initial state."""
+        self.portfolio_items.clear()
+        self.cash_balance = start_cash
+        self.performance_history.clear()
+        self.transaction_history.clear()
+        logger.debug(f"Portfolio reset to initial state with ${start_cash:.2f} cash")
     
     def take_performance_snapshot(self, current_date: date) -> PerformanceSnapshot:
         """
@@ -426,11 +442,19 @@ class EnhancedPortfolio:
         latest = self.performance_history[-1]
         risk_metrics = self.calculate_risk_metrics()
         
+        # Calculate total return in dollars (not percentage)
+        total_return_dollars = 0.0
+        if self.performance_history:
+            initial_value = self.performance_history[0].total_value
+            if initial_value > 0:
+                total_return_dollars = latest.total_value - initial_value
+        
         return {
             "total_value": latest.total_value,
             "cash_balance": latest.cash_balance,
             "stock_value": latest.stock_value,
-            "total_return": latest.total_return,
+            "total_return": total_return_dollars,  # Return dollar amount, not percentage
+            "total_return_pct": latest.total_return,  # Keep percentage as separate field
             "num_positions": latest.num_positions,
             "volatility": risk_metrics.volatility,
             "sharpe_ratio": risk_metrics.sharpe_ratio,
