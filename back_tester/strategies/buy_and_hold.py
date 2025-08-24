@@ -3,8 +3,8 @@ Buy and Hold strategy implementation.
 """
 
 from typing import List, Tuple
-from strategy import Strategy
-from models.transaction import Transaction, TransactionType
+from back_tester.strategy import Strategy
+from back_tester.models.transaction import Transaction, TransactionType
 
 
 class BuyAndHoldStrategy(Strategy):

@@ -3,8 +3,8 @@ Moving Average strategy implementation.
 """
 
 from typing import List, Tuple, Dict, Optional
-from strategy import Strategy
-from models.transaction import Transaction, TransactionType
+from back_tester.strategy import Strategy
+from back_tester.models.transaction import Transaction, TransactionType
 
 
 class MovingAverageStrategy(Strategy):

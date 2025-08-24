@@ -5,8 +5,8 @@ Portfolio management for the back tester.
 import json
 import os
 from typing import List, Dict, Any
-from models.portfolio_item import PortfolioItem
-from models.transaction import Transaction, TransactionType
+from back_tester.models.portfolio_item import PortfolioItem
+from back_tester.models.transaction import Transaction, TransactionType
 
 
 class Portfolio:

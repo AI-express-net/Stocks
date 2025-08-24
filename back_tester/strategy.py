@@ -4,7 +4,7 @@ Abstract interface for trading strategies.
 
 from abc import ABC, abstractmethod
 from typing import List, Tuple
-from models.transaction import Transaction, TransactionType
+from back_tester.models.transaction import Transaction, TransactionType
 
 
 class Strategy(ABC):

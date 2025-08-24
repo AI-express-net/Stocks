@@ -5,26 +5,21 @@ This module provides an enhanced back tester that integrates with real stock dat
 and includes advanced portfolio management features.
 """
 
-import sys
-import os
 import json
 import logging
 from datetime import date, datetime, timedelta
 from typing import List, Dict, Optional, Tuple, Any
 
-# Add the parent directory to the path to import from stocks
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from config import BackTesterConfig
-from enhanced_portfolio import EnhancedPortfolio, PerformanceSnapshot
-from real_valuator import RealValuator
-from strategy import Strategy
-from models.transaction import Transaction, TransactionType
-from performance_tracker import PerformanceTracker
-from models.benchmark_portfolio import BenchmarkPortfolio
-from performance_graph import PerformanceGraph
-from strategies.benchmark_strategy import BenchmarkStrategy
-from dividend_handler import DividendHandler
+from back_tester.config import BackTesterConfig
+from back_tester.enhanced_portfolio import EnhancedPortfolio, PerformanceSnapshot
+from back_tester.real_valuator import RealValuator
+from back_tester.strategy import Strategy
+from back_tester.models.transaction import Transaction, TransactionType
+from back_tester.performance_tracker import PerformanceTracker
+from back_tester.models.benchmark_portfolio import BenchmarkPortfolio
+from back_tester.performance_graph import PerformanceGraph
+from back_tester.strategies.benchmark_strategy import BenchmarkStrategy
+from back_tester.dividend_handler import DividendHandler
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

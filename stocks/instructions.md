@@ -3,6 +3,8 @@
 - All code must follow the general coding rules in coding_rules.md
 - After any changes are made to the code, run pytest on the code.
 - Never suggest to use a mock in production code.
+- All requirements in the requirements-file should be reflected in pytest unit-tests.
+- All applications and pytest unit-tests need to run in PyCharm as wel as Cursor. Including making sure that any new packages introduced in Cursor are alo available in PyCharm.
 
 The following instructions were suggested by Cursor itself:
 - Mandating systematic search before making interface changes.

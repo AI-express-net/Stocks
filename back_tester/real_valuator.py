@@ -5,17 +5,12 @@ This module provides a real valuator that integrates with the existing stock dat
 infrastructure to fetch actual historical stock prices.
 """
 
-import sys
-import os
 import logging
 from datetime import date, datetime
 from typing import List, Tuple, Optional
 
-# Add the parent directory to the path to import from stocks
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from valuator import Valuator
-from models.transaction import Transaction, TransactionType
+from back_tester.valuator import Valuator
+from back_tester.models.transaction import Transaction, TransactionType
 
 # Import the existing stock infrastructure
 from stocks.fmp_stock import Stock

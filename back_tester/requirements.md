@@ -2,7 +2,7 @@
 I want to build a stock back tester. The basic process is as follows:
 - Given a start cash amount in US dollars. The default is $10000.
 - Given an amount in US dollars that is added to the cash amount after each a set frequency of the back-tester. The default is $0. This called the 'add-amount'. The default frequency is once per month.
-- Given a start-date and an end-date. The default start-date is 1-1-1970. The default end-date is today.
+- Given a start-date and an end-date. The default start-date is 1/1/2023. The default end-date is 12/31/2023.
 - A test frequency that defines how often the back-tester calculates the stock values. The default values is once per day between the start-date and the end-date.
 - Given a set of stocks as the initial portfolio. It could be empty at the start by default. These stocks should be written to file named portfolio.json each time it is updated. For each stock it should keep the name of the stock, the number of shares of that stock in the portfolio, the average price the shares were bought for, the value of the shares based on the stock price for the most recent 'processed' date (processed date is defined below), the date the stock was added to the list, the most recent date the number of shares changed and write it as JSON in the portfolio.json file.
 - The portfolio.json file also keeps the total cash amount.
@@ -22,3 +22,4 @@ I want to build a stock back tester. The basic process is as follows:
 - Create the same files containing the portfolio, the results and the transactions for the benchmark.
 - At the end, a graph is created that compares the performance of the back-tester and the benchmark.
 - When a stock in the portfolio passes an ex-dividend date, the portfolio gets added cash equals to the dividend amount times the number of shares held.
+- Dividend payments should show up in the transaction list as a cash transaction. Similarly the periodic addition of cash should be added as a transaction and logged.

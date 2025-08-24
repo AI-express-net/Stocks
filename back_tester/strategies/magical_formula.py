@@ -10,8 +10,8 @@ from typing import List, Tuple, Dict, Optional
 from datetime import date, timedelta
 import random
 
-from strategy import Strategy
-from models.transaction import Transaction, TransactionType
+from back_tester.strategy import Strategy
+from back_tester.models.transaction import Transaction, TransactionType
 
 logger = logging.getLogger(__name__)
 

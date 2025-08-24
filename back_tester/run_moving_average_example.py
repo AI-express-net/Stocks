@@ -3,17 +3,12 @@
 Example script to run the back tester with Moving Average strategy.
 """
 
-import sys
-import os
 from datetime import date, timedelta
 
-# Add the current directory to the path for imports
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
-from config import BackTesterConfig
-from enhanced_back_tester import EnhancedBackTester
-from strategies.moving_average import MovingAverageStrategy
-from mock_valuator import MockValuator
+from back_tester.config import BackTesterConfig
+from back_tester.enhanced_back_tester import EnhancedBackTester
+from back_tester.strategies.moving_average import MovingAverageStrategy
+from back_tester.mock_valuator import MockValuator
 
 
 def run_moving_average_example():

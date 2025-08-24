@@ -12,8 +12,8 @@ from typing import Dict, List, Optional, Tuple
 # Python 3.6 compatibility - no dataclasses
 from enum import Enum
 
-from models.portfolio_item import PortfolioItem
-from models.transaction import Transaction, TransactionType
+from back_tester.models.portfolio_item import PortfolioItem
+from back_tester.models.transaction import Transaction, TransactionType
 
 logger = logging.getLogger(__name__)
 
