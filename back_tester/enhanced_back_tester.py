@@ -517,9 +517,6 @@ class EnhancedBackTester:
         benchmark_portfolio_items = self.benchmark_portfolio.get_portfolio_items()
         available_cash = self.benchmark_portfolio.get_cash_balance()
         
-        # Debug: Log benchmark update details
-        logger.debug(f"Benchmark update - Date: {date}, Cash: ${available_cash:.2f}, Stock values: {self.stock_values}")
-        
         # Generate benchmark transactions using SP500 buy-and-hold strategy
         # Pass the same stock values list as the main strategy
         benchmark_transactions = self.benchmark_strategy.generate_transactions(
@@ -528,9 +525,6 @@ class EnhancedBackTester:
             date, 
             available_cash
         )
-        
-        # Debug: Log benchmark transactions
-        logger.debug(f"Benchmark generated {len(benchmark_transactions)} transactions: {benchmark_transactions}")
         
         # Execute benchmark transactions (sell first, then buy)
         sell_transactions = [t for t in benchmark_transactions if t.transaction_type == TransactionType.SELL]
@@ -592,7 +586,8 @@ class EnhancedBackTester:
             benchmark_results_file = f"back_tester/results/{self.config.strategy}_benchmark_results.json"
             benchmark_transactions_file = f"back_tester/results/{self.config.strategy}_benchmark_transactions.json"
             
-            self.benchmark_portfolio.save_to_file(benchmark_portfolio_file)
+            # Save benchmark portfolio to its configured file
+            self.benchmark_portfolio.save_to_file()
             
             # Save benchmark results
             benchmark_results = {
