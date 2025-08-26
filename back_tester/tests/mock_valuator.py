@@ -1,11 +1,13 @@
 """
-Mock Valuator Implementation
+Mock Valuator Implementation for Testing
 
 This module provides a mock valuator for testing that simulates real stock data
 without depending on the actual stock infrastructure.
 """
 
 import logging
+import random
+import math
 from datetime import date, datetime
 from typing import List, Tuple, Optional
 
@@ -95,81 +97,28 @@ class MockValuator(Valuator):
             return self._price_cache[cache_key]
         
         # Generate a realistic price with some variation
-        import random
-        import math
+        # Use the date as a seed for consistent pricing
+        random.seed(hash(target_date.isoformat()) + hash(stock_symbol))
         
-        # Use the date as a seed for consistent prices
-        random.seed(hash(target_date) + hash(stock_symbol))
+        # Add some daily variation (±2%)
+        daily_variation = random.uniform(-0.02, 0.02)
         
-        # Add some time-based trend and random variation
-        days_since_epoch = (target_date - date(1970, 1, 1)).days
-        
-        # Create a trend (slight upward trend over time)
-        trend_factor = 1.0 + (days_since_epoch * 0.0001)
-        
-        # Add some cyclical variation (market cycles)
-        cycle_factor = 1.0 + 0.1 * math.sin(days_since_epoch * 0.01)
-        
-        # Add random daily variation
-        daily_variation = 1.0 + random.uniform(-0.05, 0.05)
+        # Add some trend based on the date (small upward trend)
+        days_since_epoch = (target_date - date(2020, 1, 1)).days
+        trend_factor = 1 + (days_since_epoch * 0.0001)  # Very small daily growth
         
         # Calculate final price
-        final_price = base_price * trend_factor * cycle_factor * daily_variation
+        price = base_price * (1 + daily_variation) * trend_factor
         
-        # Ensure price is positive and reasonable
-        final_price = max(final_price, 1.0)
+        # Ensure price doesn't go below $1
+        price = max(price, 1.0)
         
-        # Cache the result
-        self._price_cache[cache_key] = final_price
+        # Cache the price
+        self._price_cache[cache_key] = price
         
-        return final_price
-    
-    def get_available_dates(self, stock_symbol: str) -> List[date]:
-        """
-        Get list of available dates for a stock.
-        
-        Args:
-            stock_symbol: Stock symbol
-            
-        Returns:
-            List of available dates (simulated)
-        """
-        # Return a range of dates for testing
-        start_date = date(2020, 1, 1)
-        end_date = date(2024, 12, 31)
-        
-        dates = []
-        current_date = start_date
-        while current_date <= end_date:
-            dates.append(current_date)
-            current_date = current_date.replace(day=current_date.day + 1)
-        
-        return dates
-    
-    def get_price_range(self, stock_symbol: str, start_date: date, end_date: date) -> List[Tuple[date, float]]:
-        """
-        Get price range for a stock between two dates.
-        
-        Args:
-            stock_symbol: Stock symbol
-            start_date: Start date
-            end_date: End date
-            
-        Returns:
-            List of (date, price) tuples
-        """
-        results = []
-        current_date = start_date
-        
-        while current_date <= end_date:
-            price = self._get_mock_price(stock_symbol, current_date)
-            if price is not None:
-                results.append((current_date, price))
-            current_date = current_date.replace(day=current_date.day + 1)
-        
-        return results
+        return price
     
     def clear_cache(self):
-        """Clear the internal cache."""
+        """Clear the price cache."""
         self._price_cache.clear()
-        logger.info("MockValuator cache cleared") 
+        logger.info("MockValuator cache cleared")

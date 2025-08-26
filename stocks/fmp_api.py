@@ -35,6 +35,8 @@ HISTORICAL_PRICES_API = f"{API_BASE}historical-price-full/{{}}?from={{}}&to={{}}
 KEY_METRICS_API = f"{API_BASE}key-metrics/{{}}?period=quarter&limit={{}}&apikey={API_KEY}"
 STOCK_SPLITS_API = f"{API_BASE}historical-price-full/stock_split/{{}}?apikey={API_KEY}"
 QUOTE_API = f"{API_BASE}quote/{{}}?apikey={API_KEY}"
+HISTORICAL_DIVIDENDS_API = f"{API_BASE}historical-price-full/stock_dividend/{{}}?apikey={API_KEY}"
+DIVIDEND_CALENDAR_API = f"{API_BASE}calendar/earnings?from={{}}&to={{}}&apikey={API_KEY}"
 
 # Market information APIs
 STOCK_LIST_API = f"{API_BASE}stock/list?apikey={API_KEY}"
@@ -58,6 +60,7 @@ stock_data_uri_map = {
     Data.HistoricalPrices: HISTORICAL_PRICES_API,
     Data.KeyMetricsQuarterly: KEY_METRICS_API,
     Data.Quote: QUOTE_API,
+    Data.HistoricalDividends: HISTORICAL_DIVIDENDS_API,
     #    Data.StockSplits: STOCK_SPLITS_API,
 }
 
@@ -135,6 +138,31 @@ class FmpApi:
 
     def get_dcf(self, stock_symbol):
         return fetch_from_api(DCF_API.format(stock_symbol))
+
+    def get_historical_dividends(self, stock_symbol):
+        """
+        Get historical dividend data for a stock.
+        
+        Args:
+            stock_symbol: Stock symbol
+            
+        Returns:
+            List of dividend records with date, amount, etc.
+        """
+        return fetch_from_api(HISTORICAL_DIVIDENDS_API.format(stock_symbol))
+
+    def get_dividend_calendar(self, from_date: str, to_date: str):
+        """
+        Get dividend calendar for a date range.
+        
+        Args:
+            from_date: Start date (YYYY-MM-DD)
+            to_date: End date (YYYY-MM-DD)
+            
+        Returns:
+            List of upcoming dividend payments
+        """
+        return fetch_from_api(DIVIDEND_CALENDAR_API.format(from_date, to_date))
 
 
 if __name__ == "__main__":

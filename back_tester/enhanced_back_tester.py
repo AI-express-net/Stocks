@@ -9,7 +9,7 @@ import json
 import logging
 import os
 from datetime import date, datetime, timedelta
-from typing import List, Dict, Optional, Tuple, Any
+from typing import List, Dict, Optional, Any
 
 from back_tester.config import BackTesterConfig
 from back_tester.enhanced_portfolio import EnhancedPortfolio, PerformanceSnapshot
@@ -20,7 +20,7 @@ from back_tester.performance_tracker import PerformanceTracker
 
 from back_tester.performance_graph import PerformanceGraph
 from back_tester.strategies.sp500_buy_and_hold import SP500BuyAndHoldStrategy
-from back_tester.dividend_handler import DividendHandler
+from stocks.fmp_stock import Stock
 
 
 
@@ -76,8 +76,13 @@ class EnhancedBackTester:
         self.benchmark_strategy = SP500BuyAndHoldStrategy(max_position_size=1.0)  # 100% allocation to SP500
         self.performance_graph = PerformanceGraph()
         
-        # Dividend handling
-        self.dividend_handler = DividendHandler(config.dividend_file)
+        # Dividend handling - use FMP API for live dividend data
+        # Convert string dates to date objects for dividend handling
+        self.test_start_date = datetime.strptime(self.config.start_date, '%Y-%m-%d').date()
+        self.test_end_date = datetime.strptime(self.config.end_date, '%Y-%m-%d').date()
+        
+        # Stock cache for dividend data
+        self.stock_cache: Dict[str, Stock] = {}
         
         # Load stock list - both main strategy and benchmark use the same stock list
         self.stock_list = self._load_stock_list()
@@ -146,6 +151,9 @@ class EnhancedBackTester:
         self.portfolio.reset_portfolio(self.config.start_cash)
         self.benchmark_portfolio.reset_portfolio(self.config.start_cash)
         
+        # Dividend data will be loaded on-demand when checking for dividends
+        logger.debug("Dividend data will be loaded on-demand using Stock class")
+        
         logger.info(f"Starting enhanced back test from {self.current_date} to {self.end_date}")
         
         # Take initial snapshot
@@ -177,16 +185,18 @@ class EnhancedBackTester:
                         self.transaction_log.append(cash_transaction)
                 
                 # Check for dividends and add to portfolio
-                dividend_amount = self.dividend_handler.check_dividends(self.current_date, self.portfolio)
-                if dividend_amount > 0:
-                    self.dividend_handler.add_dividend_cash(self.portfolio, dividend_amount)
-                    logger.info(f"Added ${dividend_amount:.2f} in dividends to portfolio on {self.current_date}")
+                dividends_paid = self._check_dividends(self.current_date, self.portfolio)
+                if dividends_paid:
+                    total_dividends_today = sum(dividends_paid.values())
+                    self.portfolio.add_cash(total_dividends_today)
+                    logger.debug(f"Added ${total_dividends_today:.2f} in dividends to portfolio on {self.current_date}")
                     
-                    # Log dividend payment as transaction
-                    dividend_transaction = self._create_cash_transaction(
-                        dividend_amount, self.current_date, "Dividend payment"
-                    )
-                    self.transaction_log.append(dividend_transaction)
+                    # Log each dividend payment as a separate transaction
+                    for stock, amount in dividends_paid.items():
+                        dividend_transaction = self._create_dividend_transaction(
+                            stock, amount, self.current_date
+                        )
+                        self.transaction_log.append(dividend_transaction)
                 
                 # Get current stock values
                 stock_values = self.valuator.calculate_values(self.stock_list, self.current_date)
@@ -211,7 +221,7 @@ class EnhancedBackTester:
                 # Generate transactions from strategy
                 portfolio_items = list(self.portfolio.get_portfolio_items().values())
                 transactions = self.strategy.generate_transactions(
-                    portfolio_items, stock_values, self.current_date, self.portfolio.get_cash_balance()
+                    portfolio_items, stock_values, self.current_date.strftime('%Y-%m-%d'), self.portfolio.get_cash_balance()
                 )
                 
                 # Execute transactions (sell first, then buy)
@@ -232,6 +242,9 @@ class EnhancedBackTester:
                     if self.portfolio.execute_transaction(transaction):
                         successful_transactions += 1
                         self.transaction_log.append(transaction)
+                        
+                        # Dividend data will be loaded on-demand when checking for dividends
+                        logger.debug(f"Newly acquired stock: {transaction.stock} - dividend data will be loaded on-demand")
                     else:
                         failed_transactions += 1
                         logger.debug(f"Failed to execute buy transaction: {transaction}")
@@ -280,7 +293,11 @@ class EnhancedBackTester:
         # Generate results
         results = self._generate_results(successful_transactions, failed_transactions)
         
-        logger.info(f"Back test completed. {successful_transactions} successful, {failed_transactions} failed transactions")
+        # Count dividend transactions for logging
+        dividend_transactions = len([t for t in self.transaction_log if t.transaction_type == TransactionType.DIVIDEND])
+        total_dividends = sum(t.price * t.shares for t in self.transaction_log if t.transaction_type == TransactionType.DIVIDEND)
+        
+        logger.info(f"Back test completed. {successful_transactions} successful, {failed_transactions} failed transactions, {dividend_transactions} dividend transactions (${total_dividends:.2f} total)")
         return results
     
     def _advance_date(self) -> None:
@@ -364,6 +381,20 @@ class EnhancedBackTester:
         total_transactions = successful_transactions + failed_transactions
         success_rate = (successful_transactions / total_transactions * 100) if total_transactions > 0 else 0
         
+        # Calculate dividend metrics
+        dividend_transactions = [t for t in self.transaction_log if t.transaction_type == TransactionType.DIVIDEND]
+        total_dividends_received = sum(t.price * t.shares for t in dividend_transactions)
+        dividend_count = len(dividend_transactions)
+        
+        # Group dividends by stock
+        dividends_by_stock = {}
+        for t in dividend_transactions:
+            stock = t.stock
+            amount = t.price * t.shares
+            if stock not in dividends_by_stock:
+                dividends_by_stock[stock] = 0
+            dividends_by_stock[stock] += amount
+        
         # Calculate date range
         start_date = self.performance_snapshots[0].date
         end_date = self.performance_snapshots[-1].date
@@ -401,6 +432,11 @@ class EnhancedBackTester:
                 "successful_transactions": successful_transactions,
                 "failed_transactions": failed_transactions,
                 "success_rate": success_rate
+            },
+            "dividend_metrics": {
+                "total_dividends_received": total_dividends_received,
+                "dividend_transactions_count": dividend_count,
+                "dividends_by_stock": dividends_by_stock
             },
             "portfolio_summary": portfolio_summary,
             "performance_history": [
@@ -460,12 +496,14 @@ class EnhancedBackTester:
             # Count actual transactions
             successful = len([t for t in self.transaction_log if t.transaction_type.value in ["BUY", "SELL"]])
             cash_transactions = len([t for t in self.transaction_log if t.transaction_type.value == "CASH"])
+            dividend_transactions = len([t for t in self.transaction_log if t.transaction_type.value == "DIVIDEND"])
             failed = 0  # Failed transactions are logged but not stored in transaction_log
             
             results["trading_metrics"]["successful_transactions"] = successful
             results["trading_metrics"]["cash_transactions"] = cash_transactions
+            results["trading_metrics"]["dividend_transactions"] = dividend_transactions
             results["trading_metrics"]["failed_transactions"] = failed
-            results["trading_metrics"]["total_transactions"] = successful + cash_transactions + failed
+            results["trading_metrics"]["total_transactions"] = successful + cash_transactions + dividend_transactions + failed
             
             with open(filename, 'w') as f:
                 json.dump(results, f, indent=2, default=str)
@@ -511,7 +549,7 @@ class EnhancedBackTester:
         
         logger.info("Back tester reset to initial state")
     
-    def _update_benchmark_portfolio(self, date: datetime) -> None:
+    def _update_benchmark_portfolio(self, date: date) -> None:
         """Update benchmark portfolio using SP500 buy-and-hold strategy."""
         # Get current portfolio items and stock values for benchmark
         benchmark_portfolio_items = self.benchmark_portfolio.get_portfolio_items()
@@ -522,7 +560,7 @@ class EnhancedBackTester:
         benchmark_transactions = self.benchmark_strategy.generate_transactions(
             benchmark_portfolio_items, 
             self.stock_values,  # Use same stock values list as main strategy
-            date, 
+            date.strftime('%Y-%m-%d'), 
             available_cash
         )
         
@@ -649,4 +687,83 @@ class EnhancedBackTester:
             shares=1,
             transaction_type=TransactionType.CASH,
             description=description
-        ) 
+        )
+    
+    def _create_dividend_transaction(self, stock: str, amount: float, date: date) -> Transaction:
+        """
+        Create a dividend transaction for logging.
+        
+        Args:
+            stock: Stock symbol that paid the dividend
+            amount: Dividend amount received
+            date: Transaction date
+            
+        Returns:
+            Transaction object representing the dividend transaction
+        """
+        return Transaction(
+            stock=stock,
+            date=date.strftime('%Y-%m-%d'),
+            price=amount,
+            shares=1,
+            transaction_type=TransactionType.DIVIDEND,
+            description=f"Dividend payment from {stock}"
+        )
+    
+    def _check_dividends(self, current_date: date, portfolio) -> Dict[str, float]:
+        """
+        Check for dividends on the current date using the Stock class data.
+        
+        Args:
+            current_date: Date to check for dividends
+            portfolio: Portfolio object with holdings
+            
+        Returns:
+            Dictionary mapping stock symbols to dividend amounts
+        """
+        dividends_paid = {}
+        portfolio_items = portfolio.get_portfolio_items()
+        
+        for stock_symbol, portfolio_item in portfolio_items.items():
+            try:
+                # Get or create Stock instance
+                if stock_symbol not in self.stock_cache:
+                    self.stock_cache[stock_symbol] = Stock(stock_symbol)
+                stock = self.stock_cache[stock_symbol]
+                
+                # Fetch dividend data using the Stock class (this will use MongoDB caching)
+                stock.fetch_stock_data('historical_dividends')
+                
+                # Get the dividend data from the stock entity
+                dividend_data = stock.historical_dividends.get_data()
+                
+                if not dividend_data or not isinstance(dividend_data, dict):
+                    continue
+                    
+                # Extract historical dividend records from the response
+                historical_dividends = dividend_data.get('historical', [])
+                if not historical_dividends or not isinstance(historical_dividends, list):
+                    continue
+                    
+                # Check for dividends on the current date
+                for dividend in historical_dividends:
+                    try:
+                        dividend_date = datetime.strptime(dividend.get('date', ''), '%Y-%m-%d').date()
+                        
+                        if dividend_date == current_date:
+                            shares = portfolio_item.shares
+                            dividend_amount = shares * float(dividend.get('dividend', 0))
+                            
+                            if dividend_amount > 0:
+                                dividends_paid[stock_symbol] = dividend_amount
+                                logger.debug(f"Dividend for {stock_symbol}: {shares} shares × ${dividend.get('dividend', 0)} = ${dividend_amount:.2f}")
+                                
+                    except (ValueError, KeyError) as e:
+                        logger.debug(f"Error processing dividend for {stock_symbol}: {e}")
+                        continue
+                        
+            except Exception as e:
+                logger.debug(f"Error checking dividends for {stock_symbol}: {e}")
+                continue
+        
+        return dividends_paid 

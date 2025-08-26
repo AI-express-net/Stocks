@@ -4,14 +4,15 @@ Command-line interface for running the stock back tester.
 """
 
 import argparse
+import sys
 from datetime import date
 
 from back_tester.config import BackTesterConfig
 from back_tester.enhanced_back_tester import EnhancedBackTester
 from back_tester.strategies.moving_average import MovingAverageStrategy
 from back_tester.strategies.buy_and_hold import BuyAndHoldStrategy
+from back_tester.strategies.sp500_buy_and_hold import SP500BuyAndHoldStrategy
 from back_tester.strategies.magical_formula import MagicalFormulaStrategy
-from back_tester.mock_valuator import MockValuator
 
 
 def _cleanup_saved_files(strategy_name):
@@ -75,6 +76,10 @@ def create_strategy(strategy_name, **kwargs):
     elif strategy_name.lower() == 'buy_and_hold':
         return BuyAndHoldStrategy(
             max_position_size=kwargs.get('max_position_size', 0.2)
+        )
+    elif strategy_name.lower() == 'sp500_buy_and_hold':
+        return SP500BuyAndHoldStrategy(
+            max_position_size=kwargs.get('max_position_size', 1.0)
         )
     elif strategy_name.lower() == 'magical_formula':
         return MagicalFormulaStrategy(
@@ -154,6 +159,19 @@ def run_back_tester(args):
     print(f"Total Transactions: {results['trading_metrics']['total_transactions']}")
     print(f"Successful Transactions: {results['trading_metrics']['successful_transactions']}")
     print(f"Success Rate: {results['trading_metrics']['success_rate']:.1f}%")
+    
+    # Display dividend information
+    if 'dividend_metrics' in results:
+        print(f"Dividend Transactions: {results['dividend_metrics']['dividend_transactions_count']}")
+        print(f"Total Dividends Received: ${results['dividend_metrics']['total_dividends_received']:.2f}")
+        
+        # Show top dividend-paying stocks
+        dividends_by_stock = results['dividend_metrics']['dividends_by_stock']
+        if dividends_by_stock:
+            print("Top Dividend-Paying Stocks:")
+            sorted_dividends = sorted(dividends_by_stock.items(), key=lambda x: x[1], reverse=True)
+            for stock, amount in sorted_dividends[:5]:  # Show top 5
+                print(f"  {stock}: ${amount:.2f}")
     
     # Export results
     results_file = f"back_tester/results/{args.strategy}_results.json"

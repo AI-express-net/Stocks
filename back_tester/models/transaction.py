@@ -12,7 +12,8 @@ class TransactionType(Enum):
     """Transaction types."""
     BUY = "buy"
     SELL = "sell"
-    CASH = "cash"  # For cash additions and dividend payments
+    CASH = "cash"  # For periodic cash additions
+    DIVIDEND = "dividend"  # For dividend payments
 
 
 @dataclass
@@ -41,10 +42,10 @@ class Transaction:
         if self.price <= 0:
             raise ValueError("Price must be positive")
         
-        # For CASH transactions, shares should be 1 and price is the cash amount
-        if self.transaction_type == TransactionType.CASH:
+        # For CASH and DIVIDEND transactions, shares should be 1 and price is the cash amount
+        if self.transaction_type in [TransactionType.CASH, TransactionType.DIVIDEND]:
             if self.shares != 1:
-                raise ValueError("CASH transactions must have shares = 1")
+                raise ValueError("CASH and DIVIDEND transactions must have shares = 1")
         else:
             if self.shares <= 0:
                 raise ValueError("Shares must be positive")
@@ -102,6 +103,8 @@ class Transaction:
         """String representation of transaction."""
         if self.transaction_type == TransactionType.CASH:
             return f"CASH {self.description}: ${self.price:.2f} on {self.date}"
+        elif self.transaction_type == TransactionType.DIVIDEND:
+            return f"DIVIDEND {self.stock}: ${self.price:.2f} on {self.date}"
         else:
             return f"{self.transaction_type.value.upper()} {self.shares} shares of {self.stock} at ${self.price:.2f} on {self.date}"
     

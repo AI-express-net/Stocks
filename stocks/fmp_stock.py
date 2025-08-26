@@ -13,6 +13,7 @@ from stocks.earnings_entity import EarningsQuarterlyEntity
 from stocks.earnings_entity import EarningsYearlyEntity
 from stocks.ev_value_entity import EnterpriseValueEntity
 from stocks.historical_prices_entity import HistoricalPricesEntity
+from stocks.historical_dividends_entity import HistoricalDividendsEntity
 from stocks.key_metrics_entity import KeyMetricsQuarterlyEntity
 from stocks.mda50_prices_entity import Mda50PricesEntity
 from stocks.quote_entity import QuoteEntity
@@ -88,6 +89,7 @@ class Stock:
         self.cash_flow_quarterly = CashFlowQuarterlyEntity(name)
         self.cash_flow_yearly = CashFlowYearlyEntity(name)
         self.historical_prices = HistoricalPricesEntity(name)
+        self.historical_dividends = HistoricalDividendsEntity(name)
         self.mda50_prices = Mda50PricesEntity(name)
         self.key_metrics_quarterly = KeyMetricsQuarterlyEntity(name)
         self.quote = QuoteEntity(name)
@@ -134,8 +136,6 @@ class Stock:
         else:
             # Use existing data from database
             field_value.set_db_data(saved_value)
-
-
 
 
     def generate_data(self, field_name):
