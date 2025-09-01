@@ -19,7 +19,8 @@ from back_tester.models.transaction import Transaction, TransactionType
 from back_tester.performance_tracker import PerformanceTracker
 
 from back_tester.performance_graph import PerformanceGraph
-from back_tester.strategies.sp500_buy_and_hold import SP500BuyAndHoldStrategy
+from back_tester.strategies.buy_and_hold import BuyAndHoldStrategy
+
 from stocks.fmp_stock import Stock
 
 
@@ -73,7 +74,12 @@ class EnhancedBackTester:
             initial_cash=config.start_cash,
             portfolio_file=config.portfolio_file.replace('.json', '_benchmark.json')
         )  # Use regular portfolio for benchmark
-        self.benchmark_strategy = SP500BuyAndHoldStrategy(max_position_size=1.0)  # 100% allocation to SP500
+        # Create benchmark strategy using BuyAndHoldStrategy with SPY as target stock
+        self.benchmark_strategy = BuyAndHoldStrategy(
+            target_stocks=['SPY'], 
+            max_position_size=1.0,
+            allow_existing_positions=True  # Allow buying more SPY if already in portfolio
+        )
         self.performance_graph = PerformanceGraph()
         
         # Dividend handling - use FMP API for live dividend data
@@ -96,7 +102,7 @@ class EnhancedBackTester:
         
         try:
             # Clear results directory
-            results_dir = "back_tester/results"
+            results_dir = "results"
             if os.path.exists(results_dir):
                 # Remove all JSON files in results directory
                 json_files = glob.glob(os.path.join(results_dir, "*.json"))
@@ -150,6 +156,9 @@ class EnhancedBackTester:
         # Reset portfolio objects to clear any old data
         self.portfolio.reset_portfolio(self.config.start_cash)
         self.benchmark_portfolio.reset_portfolio(self.config.start_cash)
+        
+        # Clear transaction log to start fresh
+        self.transaction_log.clear()
         
         # Dividend data will be loaded on-demand when checking for dividends
         logger.debug("Dividend data will be loaded on-demand using Stock class")
@@ -332,23 +341,14 @@ class EnhancedBackTester:
         try:
             transactions_file = self.config.transactions_file
             
-            # Load existing transactions
-            existing_transactions = []
-            try:
-                with open(transactions_file, 'r') as f:
-                    existing_transactions = json.load(f)
-            except FileNotFoundError:
-                pass
-            
-            # Add new transactions
-            new_transactions = [t.to_dict() for t in self.transaction_log]
-            all_transactions = existing_transactions + new_transactions
+            # Save all current transactions (overwrite the file)
+            all_transactions = [t.to_dict() for t in self.transaction_log]
             
             # Save all transactions
             with open(transactions_file, 'w') as f:
                 json.dump(all_transactions, f, indent=2, default=str)
             
-            logger.debug(f"Saved {len(new_transactions)} new transactions")
+            logger.debug(f"Saved {len(all_transactions)} transactions")
             
         except Exception as e:
             logger.error(f"Error saving transactions: {str(e)}")
@@ -551,8 +551,22 @@ class EnhancedBackTester:
     
     def _update_benchmark_portfolio(self, date: date) -> None:
         """Update benchmark portfolio using SP500 buy-and-hold strategy."""
+        # Check for dividends and add to benchmark portfolio (same logic as main portfolio)
+        dividends_paid = self._check_dividends(date, self.benchmark_portfolio)
+        if dividends_paid:
+            total_dividends_today = sum(dividends_paid.values())
+            self.benchmark_portfolio.add_cash(total_dividends_today)
+            logger.debug(f"Added ${total_dividends_today:.2f} in dividends to benchmark portfolio on {date}")
+            
+            # Log each dividend payment as a separate transaction in benchmark portfolio
+            for stock, amount in dividends_paid.items():
+                dividend_transaction = self._create_dividend_transaction(
+                    stock, amount, date
+                )
+                self.benchmark_portfolio.transaction_history.append(dividend_transaction)
+        
         # Get current portfolio items and stock values for benchmark
-        benchmark_portfolio_items = self.benchmark_portfolio.get_portfolio_items()
+        benchmark_portfolio_items = list(self.benchmark_portfolio.get_portfolio_items().values())
         available_cash = self.benchmark_portfolio.get_cash_balance()
         
         # Generate benchmark transactions using SP500 buy-and-hold strategy
@@ -599,7 +613,7 @@ class EnhancedBackTester:
         """Generate performance comparison graphs."""
         try:
             # Ensure results directory exists
-            results_dir = "back_tester/results"
+            results_dir = "results"
             if not os.path.exists(results_dir):
                 os.makedirs(results_dir)
                 logger.info(f"Created results directory: {results_dir}")
@@ -612,17 +626,18 @@ class EnhancedBackTester:
                 return
             
             # Create graphs
-            output_prefix = f"back_tester/results/{self.config.strategy}_performance"
+            strategy_name = self.strategy.get_strategy_name() if hasattr(self, 'strategy') and self.strategy else self.config.strategy
+            output_prefix = f"results/{strategy_name}_performance"
             self.performance_graph.create_all_graphs(performance_data, output_prefix)
             
             # Save performance data
-            performance_file = f"back_tester/results/{self.config.strategy}_performance_data.json"
+            performance_file = f"results/{strategy_name}_performance_data.json"
             self.performance_tracker.save_performance_data(performance_file)
             
             # Save benchmark files
-            benchmark_portfolio_file = f"back_tester/results/{self.config.strategy}_benchmark_portfolio.json"
-            benchmark_results_file = f"back_tester/results/{self.config.strategy}_benchmark_results.json"
-            benchmark_transactions_file = f"back_tester/results/{self.config.strategy}_benchmark_transactions.json"
+            benchmark_portfolio_file = f"results/{strategy_name}_benchmark_portfolio.json"
+            benchmark_results_file = f"results/{strategy_name}_benchmark_results.json"
+            benchmark_transactions_file = f"results/{strategy_name}_benchmark_transactions.json"
             
             # Save benchmark portfolio to its configured file
             self.benchmark_portfolio.save_to_file()

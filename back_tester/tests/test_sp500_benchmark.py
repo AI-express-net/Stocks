@@ -9,11 +9,25 @@ from datetime import datetime, date
 
 from back_tester.config import BackTesterConfig
 from back_tester.enhanced_back_tester import EnhancedBackTester
-from back_tester.strategies.sp500_buy_and_hold import SP500BuyAndHoldStrategy
+from back_tester.strategies.buy_and_hold import BuyAndHoldStrategy
 
 
 def test_sp500_benchmark_identical():
     """Test that SP500 buy_and_hold strategy produces identical results for main and benchmark."""
+
+    # Clean up any existing test files
+    import os
+    test_files = [
+        'results/test_sp500_portfolio.json',
+        'results/test_sp500_transactions.json',
+        'results/test_sp500_portfolio_benchmark.json'
+    ]
+    for file_path in test_files:
+        try:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        except Exception:
+            pass  # Ignore errors if file doesn't exist
 
     # Create configuration for 3-month test period
     # Use SP500_index.json for both main strategy and benchmark - they should be identical
@@ -24,15 +38,15 @@ def test_sp500_benchmark_identical():
         start_date='2023-01-01',
         end_date='2023-03-31',  # 3-month period (Jan-Mar 2023)
         test_frequency_days=1,
-        stock_list_file='back_tester/tests/SP500_index.json',  # Both strategies use same stock list
-        portfolio_file='back_tester/results/test_sp500_portfolio.json',
-        transactions_file='back_tester/results/test_sp500_transactions.json',
+        stock_list_file='tests/SP500_index.json',  # Both strategies use same stock list
+        portfolio_file='results/test_sp500_portfolio.json',
+        transactions_file='results/test_sp500_transactions.json',
         strategy='sp500_buy_and_hold',
         benchmark_instrument='SPY'
     )
 
     # Create SP500 buy_and_hold strategy for main strategy
-    main_strategy = SP500BuyAndHoldStrategy(max_position_size=1.0)
+    main_strategy = BuyAndHoldStrategy(target_stocks=['SPY'], max_position_size=1.0, allow_existing_positions=True)
 
     # Create back tester
     back_tester = EnhancedBackTester(config)

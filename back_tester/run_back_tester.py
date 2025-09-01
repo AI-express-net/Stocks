@@ -4,6 +4,7 @@ Command-line interface for running the stock back tester.
 """
 
 import argparse
+import os
 import sys
 from datetime import date
 
@@ -11,7 +12,7 @@ from back_tester.config import BackTesterConfig
 from back_tester.enhanced_back_tester import EnhancedBackTester
 from back_tester.strategies.moving_average import MovingAverageStrategy
 from back_tester.strategies.buy_and_hold import BuyAndHoldStrategy
-from back_tester.strategies.sp500_buy_and_hold import SP500BuyAndHoldStrategy
+
 from back_tester.strategies.magical_formula import MagicalFormulaStrategy
 
 
@@ -20,17 +21,32 @@ def _cleanup_saved_files(strategy_name):
     import os
     
     files_to_delete = [
-        f"back_tester/results/{strategy_name}_portfolio.json",
-        f"back_tester/results/{strategy_name}_transactions.json", 
-        f"back_tester/results/{strategy_name}_results.json",
-        f"back_tester/results/{strategy_name}_performance_comparison.png",
-        f"back_tester/results/{strategy_name}_performance_returns.png",
-        f"back_tester/results/{strategy_name}_performance_drawdown.png",
-        f"back_tester/results/{strategy_name}_performance_data.json",
-        f"back_tester/results/{strategy_name}_benchmark_portfolio.json",
-        f"back_tester/results/{strategy_name}_benchmark_results.json",
-        f"back_tester/results/{strategy_name}_benchmark_transactions.json"
+        f"results/{strategy_name}_portfolio.json",
+        f"results/{strategy_name}_transactions.json", 
+        f"results/{strategy_name}_results.json",
+        f"results/{strategy_name}_performance_comparison.png",
+        f"results/{strategy_name}_performance_returns.png",
+        f"results/{strategy_name}_performance_drawdown.png",
+        f"results/{strategy_name}_performance_data.json",
+        f"results/{strategy_name}_benchmark_portfolio.json",
+        f"results/{strategy_name}_benchmark_results.json",
+        f"results/{strategy_name}_benchmark_transactions.json"
     ]
+    
+    # Also clean up files with dynamic strategy names for specific strategies
+    if strategy_name.lower() == 'buy_and_hold':
+        files_to_delete.extend([
+            f"results/BuyAndHold_SPY_portfolio.json",
+            f"results/BuyAndHold_SPY_transactions.json", 
+            f"results/BuyAndHold_SPY_results.json",
+            f"results/BuyAndHold_SPY_performance_comparison.png",
+            f"results/BuyAndHold_SPY_performance_returns.png",
+            f"results/BuyAndHold_SPY_performance_drawdown.png",
+            f"results/BuyAndHold_SPY_performance_data.json",
+            f"results/BuyAndHold_SPY_benchmark_portfolio.json",
+            f"results/BuyAndHold_SPY_benchmark_results.json",
+            f"results/BuyAndHold_SPY_benchmark_transactions.json"
+        ])
     
     for file_path in files_to_delete:
         try:
@@ -50,8 +66,8 @@ def create_config_from_args(args):
         'start_date': args.start_date,
         'end_date': args.end_date,
         'test_frequency_days': args.frequency,
-        'portfolio_file': f"back_tester/results/{args.strategy}_portfolio.json",
-        'transactions_file': f"back_tester/results/{args.strategy}_transactions.json"
+        'portfolio_file': f"results/{args.strategy}_portfolio.json",
+        'transactions_file': f"results/{args.strategy}_transactions.json"
     }
     
     # Add stock list file if provided
@@ -78,8 +94,10 @@ def create_strategy(strategy_name, **kwargs):
             max_position_size=kwargs.get('max_position_size', 0.2)
         )
     elif strategy_name.lower() == 'sp500_buy_and_hold':
-        return SP500BuyAndHoldStrategy(
-            max_position_size=kwargs.get('max_position_size', 1.0)
+        return BuyAndHoldStrategy(
+            target_stocks=['SPY'],
+            max_position_size=kwargs.get('max_position_size', 1.0),
+            allow_existing_positions=True
         )
     elif strategy_name.lower() == 'magical_formula':
         return MagicalFormulaStrategy(
@@ -102,24 +120,6 @@ def run_back_tester(args):
     # Create configuration
     config = create_config_from_args(args)
     
-    print(f"Configuration:")
-    print(f"  Strategy: {args.strategy}")
-    print(f"  Start Cash: ${config.start_cash:,.2f}")
-    print(f"  Add Amount: ${config.add_amount:,.2f}")
-    print(f"  Add Frequency: {config.add_amount_frequency_days} days")
-    print(f"  Date Range: {config.start_date} to {config.end_date}")
-    print(f"  Test Frequency: {config.test_frequency_days} days")
-    print(f"  Stock List File: {config.stock_list_file}")
-    print(f"  Benchmark: {config.benchmark_instrument}")
-    
-    if args.strategy.lower() == 'moving_average':
-        print(f"  Moving Average: {args.short_period}/{args.long_period} days")
-    elif args.strategy.lower() == 'magical_formula':
-        print(f"  Portfolio Size: {args.portfolio_size} stocks")
-        print(f"  Rebalance Frequency: {args.rebalance_frequency_days} days")
-    print(f"  Max Position Size: {args.max_position_size * 100}%")
-    print()
-    
     # Create strategy
     strategy_kwargs = {
         'max_position_size': args.max_position_size
@@ -141,6 +141,24 @@ def run_back_tester(args):
     # Create back tester
     back_tester = EnhancedBackTester(config)
     back_tester.set_strategy(strategy)
+    
+    print(f"Configuration:")
+    print(f"  Strategy: {args.strategy}")
+    print(f"  Start Cash: ${config.start_cash:,.2f}")
+    print(f"  Add Amount: ${config.add_amount:,.2f}")
+    print(f"  Add Frequency: {config.add_amount_frequency_days} days")
+    print(f"  Date Range: {config.start_date} to {config.end_date}")
+    print(f"  Test Frequency: {config.test_frequency_days} days")
+    print(f"  Stock List File: {config.stock_list_file}")
+    print(f"  Benchmark: {config.benchmark_instrument}")
+    
+    if args.strategy.lower() == 'moving_average':
+        print(f"  Moving Average: {args.short_period}/{args.long_period} days")
+    elif args.strategy.lower() == 'magical_formula':
+        print(f"  Portfolio Size: {args.portfolio_size} stocks")
+        print(f"  Rebalance Frequency: {args.rebalance_frequency_days} days")
+    print(f"  Max Position Size: {args.max_position_size * 100}%")
+    print()
     
     print("Running back test...")
     results = back_tester.run()
@@ -174,9 +192,12 @@ def run_back_tester(args):
                 print(f"  {stock}: ${amount:.2f}")
     
     # Export results
-    results_file = f"back_tester/results/{args.strategy}_results.json"
+    strategy_name = back_tester.strategy.get_strategy_name() if hasattr(back_tester, 'strategy') and back_tester.strategy else args.strategy
+    results_file = f"results/{strategy_name}_results.json"
     back_tester.export_results(results_file)
+    results_dir = os.path.abspath(os.path.dirname(results_file))
     print(f"\nResults exported to: {results_file}")
+    print(f"All result files saved in directory: {results_dir}")
     
     return results
 

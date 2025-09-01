@@ -83,6 +83,24 @@ class Strategy(ABC):
         
         return True
     
+    def get_strategy_name(self) -> str:
+        """
+        Get the name of the strategy.
+        
+        Returns:
+            Strategy name as a string
+        """
+        return self.__class__.__name__
+    
+    def get_strategy_description(self) -> str:
+        """
+        Get a description of the strategy.
+        
+        Returns:
+            Strategy description as a string
+        """
+        return f"{self.__class__.__name__} strategy"
+    
     def get_portfolio_value(self, portfolio_items: List, stock_values: List[Tuple[str, float]]) -> float:
         """
         Calculate total portfolio value.
@@ -99,9 +117,18 @@ class Strategy(ABC):
         
         total_value = 0.0
         for item in portfolio_items:
-            if item.name in price_dict:
-                item.update_current_value(price_dict[item.name])
-                total_value += item.current_value
+            # Handle different types of portfolio items
+            if hasattr(item, 'name'):
+                # PortfolioItem object
+                if item.name in price_dict:
+                    item.update_current_value(price_dict[item.name])
+                    total_value += item.current_value
+            elif isinstance(item, str):
+                # String (stock symbol) - skip for value calculation
+                pass
+            else:
+                # Try to get the name as a string - skip for value calculation
+                pass
         
         return total_value
     
@@ -126,11 +153,20 @@ class Strategy(ABC):
         }
         
         for item in portfolio_items:
-            if item.name in price_dict:
-                item.update_current_value(price_dict[item.name])
-                summary['total_value'] += item.current_value
-                summary['total_cost'] += item.shares * item.average_price
-                summary['unrealized_gain_loss'] += item.get_unrealized_gain_loss()
-                summary['positions'].append(item.to_dict())
+            # Handle different types of portfolio items
+            if hasattr(item, 'name'):
+                # PortfolioItem object
+                if item.name in price_dict:
+                    item.update_current_value(price_dict[item.name])
+                    summary['total_value'] += item.current_value
+                    summary['total_cost'] += item.shares * item.average_price
+                    summary['unrealized_gain_loss'] += item.get_unrealized_gain_loss()
+                    summary['positions'].append(item.to_dict())
+            elif isinstance(item, str):
+                # String (stock symbol) - skip for summary
+                pass
+            else:
+                # Try to get the name as a string - skip for summary
+                pass
         
         return summary 
