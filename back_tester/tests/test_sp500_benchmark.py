@@ -4,8 +4,6 @@ This test runs the back tester with both main strategy and benchmark strategy
 as SP500 buy_and_hold, which should produce identical results.
 """
 
-import pytest
-from datetime import datetime, date
 
 from back_tester.config import BackTesterConfig
 from back_tester.enhanced_back_tester import EnhancedBackTester

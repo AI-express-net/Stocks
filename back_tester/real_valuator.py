@@ -10,11 +10,9 @@ from datetime import date, datetime
 from typing import List, Tuple, Optional
 
 from back_tester.valuator import Valuator
-from back_tester.models.transaction import Transaction, TransactionType
 
 # Import the existing stock infrastructure
 from stocks.fmp_stock import Stock
-from stocks.data_names import Data
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

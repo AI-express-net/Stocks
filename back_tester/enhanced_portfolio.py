@@ -412,7 +412,6 @@ class EnhancedPortfolio:
         if not returns:
             return 0.0
         
-        import statistics
         sorted_returns = sorted(returns)
         index = int((1 - confidence_level) * len(sorted_returns))
         return sorted_returns[index] if index < len(sorted_returns) else sorted_returns[-1]

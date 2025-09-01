@@ -5,7 +5,7 @@ Strategy tests using pytest framework.
 import pytest
 
 from back_tester.strategies.buy_and_hold import BuyAndHoldStrategy
-from back_tester.models.transaction import Transaction, TransactionType
+from back_tester.models.transaction import Transaction
 
 
 class TestStrategy:

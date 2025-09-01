@@ -17,7 +17,6 @@ from stocks.historical_dividends_entity import HistoricalDividendsEntity
 from stocks.key_metrics_entity import KeyMetricsQuarterlyEntity
 from stocks.mda50_prices_entity import Mda50PricesEntity
 from stocks.quote_entity import QuoteEntity
-from stocks.stock_splits_entity import StockSplitsEntity
 
 from stocks.data_names import Data
 from stocks.data_names import get_name_list
@@ -189,8 +188,8 @@ class Stock:
         mda50_list = []
         date_list = []
         moving_average = 0
-        nr_shares = self.get_shares_outstanding()
-        balance_sheet_list = self.balance_sheet_quarterly["data"]
+        self.get_shares_outstanding()
+        self.balance_sheet_quarterly["data"]
 
         for i in range(n):
             moving_average += historical_list[i]["close"]

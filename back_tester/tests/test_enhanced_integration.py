@@ -4,11 +4,9 @@ Enhanced integration tests using pytest framework.
 
 import pytest
 import os
-from datetime import date, timedelta
 
 from back_tester.config import BackTesterConfig
 from back_tester.enhanced_back_tester import EnhancedBackTester
-from back_tester.tests.mock_valuator import MockValuator
 from back_tester.strategies.buy_and_hold import BuyAndHoldStrategy
 
 

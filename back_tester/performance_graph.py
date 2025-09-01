@@ -1,8 +1,7 @@
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-from typing import Dict, Any, List
+from typing import Dict, Any
 from datetime import datetime
-import numpy as np
 import logging
 
 logger = logging.getLogger(__name__)

@@ -1,5 +1,5 @@
 import enum
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from datetime import date, datetime
 from stocks import identifier
 

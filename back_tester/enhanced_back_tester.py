@@ -9,7 +9,7 @@ import json
 import logging
 import os
 from datetime import date, datetime, timedelta
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Any
 
 from back_tester.config import BackTesterConfig
 from back_tester.enhanced_portfolio import EnhancedPortfolio, PerformanceSnapshot
@@ -368,7 +368,7 @@ class EnhancedBackTester:
             return {"error": "No performance data available"}
         
         # Get performance summary
-        performance_summary = self.portfolio.get_performance_summary()
+        self.portfolio.get_performance_summary()
         risk_metrics = self.portfolio.calculate_risk_metrics()
         portfolio_summary = self.portfolio.get_portfolio_summary()
         
@@ -635,7 +635,7 @@ class EnhancedBackTester:
             self.performance_tracker.save_performance_data(performance_file)
             
             # Save benchmark files
-            benchmark_portfolio_file = f"results/{strategy_name}_benchmark_portfolio.json"
+            f"results/{strategy_name}_benchmark_portfolio.json"
             benchmark_results_file = f"results/{strategy_name}_benchmark_results.json"
             benchmark_transactions_file = f"results/{strategy_name}_benchmark_transactions.json"
             

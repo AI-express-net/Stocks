@@ -2,7 +2,6 @@
 Valuator tests using pytest framework.
 """
 
-import pytest
 
 from back_tester.tests.mock_valuator import MockValuator as ExampleValuator
 

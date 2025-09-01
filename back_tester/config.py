@@ -6,7 +6,7 @@ import os
 import json
 from dataclasses import dataclass, field
 from datetime import date, datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 
 @dataclass

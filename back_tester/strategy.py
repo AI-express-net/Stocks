@@ -4,7 +4,7 @@ Abstract interface for trading strategies.
 
 from abc import ABC, abstractmethod
 from typing import List, Tuple
-from back_tester.models.transaction import Transaction, TransactionType
+from back_tester.models.transaction import Transaction
 
 
 class Strategy(ABC):
@@ -33,7 +33,6 @@ class Strategy(ABC):
         Raises:
             ValueError: If date format is invalid or insufficient data
         """
-        pass
     
     def validate_inputs(self, portfolio_items: List, stock_values: List[Tuple[str, float]], 
                        date: str, available_cash: float) -> bool:

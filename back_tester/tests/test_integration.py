@@ -2,7 +2,6 @@
 Integration tests using pytest framework.
 """
 
-import pytest
 
 from back_tester.config import BackTesterConfig
 from back_tester.portfolio import Portfolio

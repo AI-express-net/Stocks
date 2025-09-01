@@ -7,7 +7,7 @@ Strategy focuses on high earnings yield and high return on capital.
 
 import logging
 from typing import List, Tuple, Optional
-from datetime import date, timedelta
+from datetime import date
 import random
 
 from back_tester.strategy import Strategy

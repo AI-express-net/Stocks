@@ -6,7 +6,6 @@ Command-line interface for running the stock back tester.
 import argparse
 import os
 import sys
-from datetime import date
 
 from back_tester.config import BackTesterConfig
 from back_tester.enhanced_back_tester import EnhancedBackTester

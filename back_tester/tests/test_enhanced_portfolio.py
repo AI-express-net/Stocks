@@ -2,8 +2,7 @@
 Enhanced portfolio tests using pytest framework.
 """
 
-import pytest
-from datetime import date, timedelta
+from datetime import date
 
 from back_tester.enhanced_portfolio import EnhancedPortfolio, PerformanceSnapshot, RiskMetrics
 from back_tester.models.transaction import Transaction, TransactionType

@@ -2,8 +2,6 @@
 Enhanced back tester tests using pytest framework.
 """
 
-import pytest
-from datetime import date, timedelta
 
 from back_tester.config import BackTesterConfig
 from back_tester.enhanced_back_tester import EnhancedBackTester

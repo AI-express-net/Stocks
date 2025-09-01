@@ -47,7 +47,6 @@ def test_cash_transaction_validation():
 
 def test_dividend_transaction_creation():
     """Test that dividend transactions can be created correctly."""
-    from datetime import date
     
     # Create dividend transaction directly
     dividend_tx = Transaction(

@@ -29,7 +29,6 @@ class Valuator(ABC):
             ValueError: If date format is invalid
             Exception: If unable to fetch stock data
         """
-        pass
     
     def get_stock_value(self, stock: str, date: str) -> float:
         """

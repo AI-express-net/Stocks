@@ -6,7 +6,6 @@ This file sets up the Python path so that all tests can import from the back_tes
 
 import os
 import sys
-import pytest
 
 # Add the back_tester directory to the Python path
 back_tester_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

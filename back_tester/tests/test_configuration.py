@@ -2,7 +2,6 @@
 Configuration tests using pytest framework.
 """
 
-import pytest
 import os
 import sys
 

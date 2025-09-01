@@ -1,6 +1,5 @@
 import json
 import logging
-import locale
 import matplotlib.pyplot as plt
 import multiprocessing
 import numpy as np
@@ -10,8 +9,6 @@ import unittest
 
 from dateutil import parser as date_parser
 from tensorflow.keras.layers import Dense
-from tensorflow.keras.layers import Dropout
-from tensorflow.keras.layers import concatenate
 from tensorflow.keras.models import load_model
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.models import Model
@@ -20,10 +17,9 @@ from sklearn.model_selection import train_test_split
 
 from stocks.data_names import Data
 from stocks.data_names import Market
-from stocks.factory import Factory, FmpApi
+from stocks.factory import Factory
 from stocks.fmp_stock import Stock
 from stocks.fmp_stock import StockStatus
-from stocks.financial_data import FINANCIAL_DATA_FIELD_LIST
 from stocks.financial_data import KEY_METRICS_FIELD_LIST
 
 logging.basicConfig(format='%(asctime)s [%(levelname)s] %(message)s', level=logging.INFO)
@@ -168,7 +164,7 @@ class StockTestCase(unittest.TestCase):
             with open('bad_US_stocks.json') as json_file:
                 bad_stocks_json = json.load(json_file)
                 bad_stocks = list(bad_stocks_json["bad_stocks"])
-        except Exception as exception:
+        except Exception:
             bad_stocks = []
         return stock_list, bad_stocks
 

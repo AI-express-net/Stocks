@@ -2,8 +2,7 @@
 Mock valuator tests using pytest framework.
 """
 
-import pytest
-from datetime import date, timedelta
+from datetime import date
 
 from back_tester.tests.mock_valuator import MockValuator
 

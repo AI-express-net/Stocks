@@ -7,8 +7,7 @@ without depending on the actual stock infrastructure.
 
 import logging
 import random
-import math
-from datetime import date, datetime
+from datetime import date
 from typing import List, Tuple, Optional
 
 from back_tester.valuator import Valuator
