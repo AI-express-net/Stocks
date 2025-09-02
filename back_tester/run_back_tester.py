@@ -6,57 +6,16 @@ Command-line interface for running the stock back tester.
 import argparse
 import os
 import sys
+from datetime import datetime
 
 from back_tester.config import BackTesterConfig
 from back_tester.enhanced_back_tester import EnhancedBackTester
 from back_tester.strategies.moving_average import MovingAverageStrategy
 from back_tester.strategies.buy_and_hold import BuyAndHoldStrategy
-
 from back_tester.strategies.magical_formula import MagicalFormulaStrategy
 
 
-def _cleanup_saved_files(strategy_name):
-    """Delete existing saved files for the given strategy."""
-    import os
-    
-    files_to_delete = [
-        f"results/{strategy_name}_portfolio.json",
-        f"results/{strategy_name}_transactions.json", 
-        f"results/{strategy_name}_results.json",
-        f"results/{strategy_name}_performance_comparison.png",
-        f"results/{strategy_name}_performance_returns.png",
-        f"results/{strategy_name}_performance_drawdown.png",
-        f"results/{strategy_name}_performance_data.json",
-        f"results/{strategy_name}_benchmark_portfolio.json",
-        f"results/{strategy_name}_benchmark_results.json",
-        f"results/{strategy_name}_benchmark_transactions.json"
-    ]
-    
-    # Also clean up files with dynamic strategy names for specific strategies
-    if strategy_name.lower() == 'buy_and_hold':
-        files_to_delete.extend([
-            f"results/BuyAndHold_SPY_portfolio.json",
-            f"results/BuyAndHold_SPY_transactions.json", 
-            f"results/BuyAndHold_SPY_results.json",
-            f"results/BuyAndHold_SPY_performance_comparison.png",
-            f"results/BuyAndHold_SPY_performance_returns.png",
-            f"results/BuyAndHold_SPY_performance_drawdown.png",
-            f"results/BuyAndHold_SPY_performance_data.json",
-            f"results/BuyAndHold_SPY_benchmark_portfolio.json",
-            f"results/BuyAndHold_SPY_benchmark_results.json",
-            f"results/BuyAndHold_SPY_benchmark_transactions.json"
-        ])
-    
-    for file_path in files_to_delete:
-        try:
-            if os.path.exists(file_path):
-                os.remove(file_path)
-                print(f"Deleted existing file: {file_path}")
-        except Exception as e:
-            print(f"Warning: Could not delete {file_path}: {e}")
-
-
-def create_config_from_args(args):
+def create_config_from_args(args, results_dir):
     """Create configuration from command line arguments."""
     config_dict = {
         'start_cash': args.start_cash,
@@ -65,8 +24,9 @@ def create_config_from_args(args):
         'start_date': args.start_date,
         'end_date': args.end_date,
         'test_frequency_days': args.frequency,
-        'portfolio_file': f"results/{args.strategy}_portfolio.json",
-        'transactions_file': f"results/{args.strategy}_transactions.json"
+        'portfolio_file': f"{results_dir}/{args.strategy}_portfolio.json",
+        'transactions_file': f"{results_dir}/{args.strategy}_transactions.json",
+        'results_directory': results_dir
     }
     
     # Add stock list file if provided
@@ -113,11 +73,16 @@ def run_back_tester(args):
     
     print("=== Stock Back Tester ===\n")
     
-    # Delete existing saved files as per instructions
-    _cleanup_saved_files(args.strategy)
+    # Create timestamped results directory for this run
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    results_dir = f"results/{args.strategy}_{timestamp}"
     
-    # Create configuration
-    config = create_config_from_args(args)
+    # Create the results directory
+    os.makedirs(results_dir, exist_ok=True)
+    print(f"Results will be saved to: {results_dir}")
+    
+    # Create configuration with the new results directory
+    config = create_config_from_args(args, results_dir)
     
     # Create strategy
     strategy_kwargs = {
@@ -132,7 +97,10 @@ def run_back_tester(args):
     elif args.strategy.lower() == 'magical_formula':
         strategy_kwargs.update({
             'portfolio_size': args.portfolio_size,
-            'rebalance_frequency_days': args.rebalance_frequency_days
+            'rebalance_frequency_days': args.rebalance_frequency_days,
+            'monthly_buy_count': 3,  # Always buy 3 stocks per month
+            'ranking_start': 20,      # Start of ranking range
+            'ranking_end': 40         # End of ranking range
         })
     
     strategy = create_strategy(args.strategy, **strategy_kwargs)
@@ -178,7 +146,7 @@ def run_back_tester(args):
     print(f"Success Rate: {results['trading_metrics']['success_rate']:.1f}%")
     
     # Display dividend information
-    if 'dividend_metrics' in results:
+    if 'dividend_metrics' in results and results['dividend_metrics']['dividend_transactions_count'] > 0:
         print(f"Dividend Transactions: {results['dividend_metrics']['dividend_transactions_count']}")
         print(f"Total Dividends Received: ${results['dividend_metrics']['total_dividends_received']:.2f}")
         
@@ -189,14 +157,17 @@ def run_back_tester(args):
             sorted_dividends = sorted(dividends_by_stock.items(), key=lambda x: x[1], reverse=True)
             for stock, amount in sorted_dividends[:5]:  # Show top 5
                 print(f"  {stock}: ${amount:.2f}")
+    else:
+        print("Dividend Transactions: 0")
+        print("Total Dividends Received: $0.00")
     
-    # Export results
+    # Export results to the timestamped directory
     strategy_name = back_tester.strategy.get_strategy_name() if hasattr(back_tester, 'strategy') and back_tester.strategy else args.strategy
-    results_file = f"results/{strategy_name}_results.json"
+    results_file = f"{results_dir}/{strategy_name}_results.json"
     back_tester.export_results(results_file)
-    results_dir = os.path.abspath(os.path.dirname(results_file))
+    
     print(f"\nResults exported to: {results_file}")
-    print(f"All result files saved in directory: {results_dir}")
+    print(f"All result files saved in directory: {os.path.abspath(results_dir)}")
     
     return results
 
@@ -280,4 +251,4 @@ Examples:
 
 
 if __name__ == "__main__":
-    main() 
+    main()

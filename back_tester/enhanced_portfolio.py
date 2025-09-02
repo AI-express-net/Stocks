@@ -461,11 +461,14 @@ class EnhancedPortfolio:
             "var_95": risk_metrics.var_95
         }
     
-    def save_to_file(self) -> None:
+    def save_to_file(self, file_path: str = None) -> None:
         """Save portfolio to file."""
         try:
+            # Use provided file path or fall back to default
+            target_file = file_path if file_path else self.portfolio_file
+            
             # Ensure results directory exists
-            results_dir = os.path.dirname(self.portfolio_file)
+            results_dir = os.path.dirname(target_file)
             if results_dir and not os.path.exists(results_dir):
                 os.makedirs(results_dir)
                 logger.info(f"Created results directory: {results_dir}")
@@ -487,10 +490,10 @@ class EnhancedPortfolio:
                 "last_updated": date.today().isoformat()
             }
             
-            with open(self.portfolio_file, 'w') as f:
+            with open(target_file, 'w') as f:
                 json.dump(data, f, indent=2, default=str)
             
-            logger.info(f"Portfolio saved to {self.portfolio_file}")
+            logger.info(f"Portfolio saved to {target_file}")
         except Exception as e:
             logger.error(f"Error saving portfolio: {str(e)}")
     

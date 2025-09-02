@@ -61,6 +61,9 @@ class MagicalFormulaStrategy(Strategy):
                  portfolio_size: int = 25,         # Number of stocks to hold
                  min_market_cap: float = 50e6,    # $50M minimum market cap
                  rebalance_frequency_days: int = 365,  # Annual rebalancing
+                 monthly_buy_count: int = 3,      # Number of stocks to buy per month
+                 ranking_start: int = 20,         # Start of ranking range
+                 ranking_end: int = 40,           # End of ranking range
                  exclude_utilities: bool = True,
                  exclude_financials: bool = True,
                  exclude_adrs: bool = True):
@@ -72,6 +75,9 @@ class MagicalFormulaStrategy(Strategy):
             portfolio_size: Number of stocks to hold in portfolio
             min_market_cap: Minimum market capitalization in dollars
             rebalance_frequency_days: Days between rebalancing
+            monthly_buy_count: Number of stocks to buy per month (default: 3)
+            ranking_start: Start of ranking range (default: 20)
+            ranking_end: End of ranking range (default: 40)
             exclude_utilities: Whether to exclude utility stocks
             exclude_financials: Whether to exclude financial stocks
             exclude_adrs: Whether to exclude ADRs (foreign companies)
@@ -81,15 +87,20 @@ class MagicalFormulaStrategy(Strategy):
         self.portfolio_size = portfolio_size
         self.min_market_cap = min_market_cap
         self.rebalance_frequency_days = rebalance_frequency_days
+        self.monthly_buy_count = monthly_buy_count
+        self.ranking_start = ranking_start
+        self.ranking_end = ranking_end
         self.exclude_utilities = exclude_utilities
         self.exclude_financials = exclude_financials
         self.exclude_adrs = exclude_adrs
         
-        # Track last rebalancing date
+        # Track last rebalancing date and monthly buying
         self.last_rebalance_date = None
+        self.last_monthly_buy_date = None
         self.current_positions = {}  # Track current holdings
+        self.accumulation_start_date = None  # Track when accumulation started
         
-        logger.info(f"Magical Formula Strategy initialized with portfolio size: {portfolio_size}")
+        logger.info(f"Magical Formula Strategy initialized with portfolio size: {portfolio_size}, monthly buy count: {monthly_buy_count}, ranking range: {ranking_start}-{ranking_end}")
     
     def generate_transactions(self, portfolio_items: List, stock_values: List[Tuple[str, float]],
                             date, available_cash: float) -> List[Transaction]:
@@ -113,25 +124,41 @@ class MagicalFormulaStrategy(Strategy):
         else:
             current_date = date
         
-        # Check if it's time to rebalance
+        # Set accumulation start date if not set
+        if self.accumulation_start_date is None:
+            self.accumulation_start_date = current_date
+            logger.info(f"Starting 12-month accumulation period on {date}")
+        
+        # Check if it's time to rebalance (annual rebalancing with proper timing)
         should_rebalance = self._should_rebalance(current_date)
         
-        if should_rebalance:
-            logger.info(f"Rebalancing portfolio on {date}")
+        if should_rebalance and self.last_rebalance_date is not None:
+            # Only do annual rebalancing if we've already done initial setup
+            logger.info(f"Annual rebalancing portfolio on {date}")
             # Sell all current positions
             sell_transactions = self._generate_sell_transactions(portfolio_items, stock_values, date)
             transactions.extend(sell_transactions)
             
-            # Buy new positions based on rankings
-            buy_transactions = self._generate_buy_transactions(stock_values, date, available_cash)
+            # For rebalancing, buy up to portfolio_size stocks
+            buy_transactions = self._generate_buy_transactions(stock_values, date, available_cash, max_stocks=self.portfolio_size)
             transactions.extend(buy_transactions)
             
             self.last_rebalance_date = current_date
+            self.last_monthly_buy_date = current_date  # Reset monthly buy date after rebalance
         else:
-            # Normal monthly accumulation (2-3 positions per month)
-            if len(portfolio_items) < self.portfolio_size:
-                buy_transactions = self._generate_buy_transactions(stock_values, date, available_cash)
-                transactions.extend(buy_transactions)
+            # Check if we're still in the 12-month accumulation period
+            days_since_start = (current_date - self.accumulation_start_date).days
+            if days_since_start <= 365 and len(portfolio_items) < self.portfolio_size:
+                # Check if it's time for monthly buying (3 stocks per month)
+                if self._should_buy_monthly(current_date):
+                    logger.info(f"Monthly buying on {date} - portfolio has {len(portfolio_items)} positions, target: {self.portfolio_size}")
+                    buy_transactions = self._generate_buy_transactions(stock_values, date, available_cash, max_stocks=self.monthly_buy_count)
+                    transactions.extend(buy_transactions)
+                    self.last_monthly_buy_date = current_date
+                else:
+                    logger.debug(f"Not time for monthly buying yet on {date}")
+            elif days_since_start > 365:
+                logger.info(f"12-month accumulation period completed on {date}. Portfolio has {len(portfolio_items)} positions.")
         
         return transactions
     
@@ -142,6 +169,14 @@ class MagicalFormulaStrategy(Strategy):
         
         days_since_rebalance = (current_date - self.last_rebalance_date).days
         return days_since_rebalance >= self.rebalance_frequency_days
+    
+    def _should_buy_monthly(self, current_date: date) -> bool:
+        """Check if it's time to buy monthly (every 30 days)."""
+        if self.last_monthly_buy_date is None:
+            return True
+        
+        days_since_monthly_buy = (current_date - self.last_monthly_buy_date).days
+        return days_since_monthly_buy >= 30
     
     def _generate_sell_transactions(self, portfolio_items: List, stock_values: List[Tuple[str, float]], 
                                   date: str) -> List[Transaction]:
@@ -166,21 +201,41 @@ class MagicalFormulaStrategy(Strategy):
         return transactions
     
     def _generate_buy_transactions(self, stock_values: List[Tuple[str, float]], 
-                                 date: str, available_cash: float) -> List[Transaction]:
+                                 date: str, available_cash: float, max_stocks: int) -> List[Transaction]:
         """Generate buy transactions based on Magical Formula rankings."""
         transactions = []
+        
+        if available_cash <= 0:
+            logger.info(f"No cash available for buying on {date}")
+            return transactions
         
         # Get ranked stocks
         ranked_stocks = self._get_ranked_stocks(stock_values)
         
-        # Calculate position size
-        position_size = min(available_cash / self.portfolio_size, 
-                          available_cash * self.max_position_size)
+        if not ranked_stocks:
+            logger.info(f"No ranked stocks available for buying on {date}")
+            return transactions
         
-        # Buy top ranked stocks
-        for stock, price in ranked_stocks[:self.portfolio_size]:
-            if price > 0 and position_size >= price:
-                shares_to_buy = int(position_size / price)
+        # Filter to only stocks in the ranking range 20-40
+        ranking_range_stocks = ranked_stocks[self.ranking_start-1:self.ranking_end]
+        
+        # Print the list of companies in the 20-40 range for this transaction day
+        logger.info(f"Companies in ranking range {self.ranking_start}-{self.ranking_end} for {date}:")
+        for i, (stock, price) in enumerate(ranking_range_stocks, start=self.ranking_start):
+            logger.info(f"  Rank {i}: {stock} at ${price:.2f}")
+        
+        # Calculate position size per stock
+        cash_per_stock = available_cash / max_stocks
+        
+        # Buy stocks from the ranking range (limited by max_stocks)
+        stocks_bought = 0
+        for stock, price in ranking_range_stocks:
+            if stocks_bought >= max_stocks:
+                break
+                
+            if price > 0:
+                # Calculate shares to buy
+                shares_to_buy = int(cash_per_stock / price)
                 if shares_to_buy > 0:
                     transaction = Transaction(
                         stock=stock,
@@ -191,7 +246,11 @@ class MagicalFormulaStrategy(Strategy):
                     )
                     transactions.append(transaction)
                     logger.info(f"Buying {shares_to_buy} shares of {stock} at ${price:.2f}")
+                    stocks_bought += 1
+                else:
+                    logger.debug(f"Insufficient cash to buy {stock} at ${price:.2f} with ${cash_per_stock:.2f}")
         
+        logger.info(f"Generated {len(transactions)} buy transactions for {date}")
         return transactions
     
     def _get_ranked_stocks(self, stock_values: List[Tuple[str, float]]) -> List[Tuple[str, float]]:

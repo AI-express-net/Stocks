@@ -26,6 +26,19 @@ def test_sp500_benchmark_identical():
                 os.remove(file_path)
         except Exception:
             pass  # Ignore errors if file doesn't exist
+    
+    # Also clean up any timestamped directories
+    results_dir = 'results'
+    if os.path.exists(results_dir):
+        for item in os.listdir(results_dir):
+            item_path = os.path.join(results_dir, item)
+            if os.path.isdir(item_path) and item.startswith('sp500_buy_and_hold_'):
+                import shutil
+                try:
+                    shutil.rmtree(item_path)
+                    print(f"Cleaned up timestamped directory: {item_path}")
+                except Exception as e:
+                    print(f"Could not clean up {item_path}: {e}")
 
     # Create configuration for 3-month test period
     # Use SP500_index.json for both main strategy and benchmark - they should be identical
@@ -36,9 +49,10 @@ def test_sp500_benchmark_identical():
         start_date='2023-01-01',
         end_date='2023-03-31',  # 3-month period (Jan-Mar 2023)
         test_frequency_days=1,
-        stock_list_file='tests/SP500_index.json',  # Both strategies use same stock list
-        portfolio_file='results/test_sp500_portfolio.json',
-        transactions_file='results/test_sp500_transactions.json',
+        stock_list_file='back_tester/tests/SP500_index.json',  # Both strategies use same stock list
+        portfolio_file='test_sp500_portfolio.json',
+        transactions_file='test_sp500_transactions.json',
+        results_directory='results',  # This will trigger timestamped subdirectory creation
         strategy='sp500_buy_and_hold',
         benchmark_instrument='SPY'
     )

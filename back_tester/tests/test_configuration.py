@@ -22,7 +22,7 @@ class TestConfiguration:
         assert config.start_cash == 10000.0  # Updated to match new default
         assert config.add_amount == 0.0
         assert config.add_amount_frequency_days == 30
-        assert config.start_date == '1970-01-01'
+        assert config.start_date == '2023-01-01'
         assert config.validate() == True
     
     def test_custom_config(self):

@@ -11,33 +11,23 @@ from typing import Dict, Any
 
 @dataclass
 class BackTesterConfig:
-    """Configuration class for the back tester."""
-    
+    """Configuration for the back tester."""
     start_cash: float = 10000.0
     add_amount: float = 0.0
-    add_amount_frequency_days: int = 30  # Monthly default
-    start_date: str = '1970-01-01'
-    end_date: str = field(default_factory=lambda: date.today().strftime('%Y-%m-%d'))
+    add_amount_frequency_days: int = 30
+    start_date: str = "2023-01-01"
+    end_date: str = "2023-12-31"
     test_frequency_days: int = 1
-    stock_list_file: str = field(default_factory=lambda: os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 
-        'back_tester/tests', 'SP500_stocks.json'
-    ))
-    portfolio_file: str = field(default_factory=lambda: os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), 'results', 'portfolio.json'
-    ))
-    transactions_file: str = field(default_factory=lambda: os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), 'results', 'transactions.json'
-    ))
-    strategy: str = 'moving_average'
-    valuator: str = 'real_valuator'
-    benchmark_instrument: str = 'SP500'
-    benchmark_file: str = field(default_factory=lambda: os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), 'results', 'benchmark_portfolio.json'
-    ))
-    dividend_file: str = field(default_factory=lambda: os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), 'sample_dividends.json'
-    ))
+    portfolio_file: str = "results/portfolio.json"
+    transactions_file: str = "results/transactions.json"
+    stock_list_file: str = "tests/SP500_stocks.json"  # Updated to use test file
+    benchmark_instrument: str = "SP500"
+    portfolio_size: int = 25
+    rebalance_frequency_days: int = 365
+    max_position_size: float = 0.2
+    results_directory: str = "results"  # New field for timestamped subdirectories
+    valuator: str = "real_valuator"  # Added missing field
+    strategy: str = "moving_average"  # Added missing field
     
 
     

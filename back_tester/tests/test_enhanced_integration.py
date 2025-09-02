@@ -43,7 +43,7 @@ class TestIntegration:
         
         # Test save operations
         try:
-            back_tester.portfolio.save_to_file()  # No arguments needed
+            back_tester.portfolio.save_to_file(back_tester.config.portfolio_file)
             assert os.path.exists(back_tester.portfolio.portfolio_file)
             
             # Clean up

@@ -49,6 +49,30 @@ class EnhancedBackTester:
             config: Back tester configuration
         """
         self.config = config
+        
+        # Auto-create timestamped subdirectory if results_directory is set and doesn't already contain a timestamp
+        if hasattr(config, 'results_directory') and config.results_directory:
+            # Check if the results_directory already contains a timestamp pattern (e.g., strategy_2025-09-01_16-37-57)
+            import re
+            timestamp_pattern = r'_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}$'
+            
+            if not re.search(timestamp_pattern, config.results_directory):
+                # Create timestamped subdirectory only if one doesn't already exist
+                from datetime import datetime
+                timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                strategy_name = getattr(config, 'strategy', 'unknown')
+                timestamped_dir = f"{config.results_directory}/{strategy_name}_{timestamp}"
+                os.makedirs(timestamped_dir, exist_ok=True)
+                
+                # Update file paths to use timestamped directory
+                config.portfolio_file = f"{timestamped_dir}/{os.path.basename(config.portfolio_file)}"
+                config.transactions_file = f"{timestamped_dir}/{os.path.basename(config.transactions_file)}"
+                config.results_directory = timestamped_dir
+                
+                logger.info(f"Created timestamped results directory: {timestamped_dir}")
+            else:
+                logger.info(f"Using existing timestamped directory: {config.results_directory}")
+        
         self.portfolio = EnhancedPortfolio(
             initial_cash=config.start_cash,
             portfolio_file=config.portfolio_file
@@ -96,13 +120,13 @@ class EnhancedBackTester:
         logger.info(f"Enhanced back tester initialized with {len(self.stock_list)} stocks")
     
     def _clear_previous_results(self) -> None:
-        """Clear previous result files at the start of each run."""
+        """Clear previous result files from the results directory."""
         import os
         import glob
         
         try:
-            # Clear results directory
-            results_dir = "results"
+            # Use the configured results directory
+            results_dir = self.config.results_directory
             if os.path.exists(results_dir):
                 # Remove all JSON files in results directory
                 json_files = glob.glob(os.path.join(results_dir, "*.json"))
@@ -281,7 +305,7 @@ class EnhancedBackTester:
                 
                 # Save portfolio periodically
                 if iteration_count % 10 == 0:
-                    self.portfolio.save_to_file()
+                    self.portfolio.save_to_file(self.config.portfolio_file)
                     self._save_transactions()
                 
                 # Advance to next date
@@ -293,7 +317,7 @@ class EnhancedBackTester:
                 continue
         
         # Final save
-        self.portfolio.save_to_file()
+        self.portfolio.save_to_file(self.config.portfolio_file)
         self._save_transactions()
         
         # Generate performance graphs
@@ -612,8 +636,8 @@ class EnhancedBackTester:
     def _generate_performance_graphs(self) -> None:
         """Generate performance comparison graphs."""
         try:
-            # Ensure results directory exists
-            results_dir = "results"
+            # Use the configured results directory
+            results_dir = self.config.results_directory
             if not os.path.exists(results_dir):
                 os.makedirs(results_dir)
                 logger.info(f"Created results directory: {results_dir}")
@@ -626,21 +650,22 @@ class EnhancedBackTester:
                 return
             
             # Create graphs
-            strategy_name = self.strategy.get_strategy_name() if hasattr(self, 'strategy') and self.strategy else self.config.strategy
-            output_prefix = f"results/{strategy_name}_performance"
+            strategy_name = self.strategy.get_strategy_name() if hasattr(self, 'strategy') and self.strategy else "strategy"
+            output_prefix = f"{results_dir}/{strategy_name}_performance"
             self.performance_graph.create_all_graphs(performance_data, output_prefix)
             
             # Save performance data
-            performance_file = f"results/{strategy_name}_performance_data.json"
+            performance_file = f"{results_dir}/{strategy_name}_performance_data.json"
             self.performance_tracker.save_performance_data(performance_file)
             
             # Save benchmark files
-            f"results/{strategy_name}_benchmark_portfolio.json"
-            benchmark_results_file = f"results/{strategy_name}_benchmark_results.json"
-            benchmark_transactions_file = f"results/{strategy_name}_benchmark_transactions.json"
+            benchmark_portfolio_file = f"{results_dir}/{strategy_name}_benchmark_portfolio.json"
+            benchmark_results_file = f"{results_dir}/{strategy_name}_benchmark_results.json"
+            benchmark_transactions_file = f"{results_dir}/{strategy_name}_benchmark_transactions.json"
             
             # Save benchmark portfolio to its configured file
-            self.benchmark_portfolio.save_to_file()
+            benchmark_file = self.config.portfolio_file.replace('.json', '_benchmark.json')
+            self.benchmark_portfolio.save_to_file(benchmark_file)
             
             # Save benchmark results
             benchmark_results = {
